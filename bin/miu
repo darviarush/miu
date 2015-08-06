@@ -140,9 +140,11 @@ sub compile {
 		($thisIsCode, $thisIsTest) = (1,0), next if /^\[code\]\s*$/;
 		($thisIsCode, $thisIsTest) = (0,1), next if /^\[test\]\s*$/;
 		
+		my $thisIsHeader = s/^([=#]{2,})(\s*)/ ("#" x length $1) . $2 /e;
+		
 		print $articleFile $_;
 
-		if($art_pattern && /^(={2,})\s*/) {
+		if($art_pattern && $thisIsHeader) {
 			
 			my $last = $';
 			my $level = length $1;

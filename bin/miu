@@ -575,3 +575,18 @@ sub packfile {
 	
 	$codeFile
 }
+
+
+# сценарии загрузки на блоги и сайты
+sub scenario {
+	my ($self, $site) = @_;
+	
+	if($site eq "habrahabr" or $site eq "hh") {
+		print `curl `;
+	}
+	else {
+		
+	}
+	
+	$self
+}

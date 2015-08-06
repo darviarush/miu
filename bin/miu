@@ -140,13 +140,14 @@ sub compile {
 		($thisIsCode, $thisIsTest) = (1,0), next if /^\[code\]\s*$/;
 		($thisIsCode, $thisIsTest) = (0,1), next if /^\[test\]\s*$/;
 		
-		my $thisIsHeader = s/^([=#]{2,})(\s*)/ ("#" x length $1) . $2 /e;
+		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
+		my $len_last = length($1) + length $2;
 		
 		print $articleFile $_;
 
 		if($art_pattern && $thisIsHeader) {
-			
-			my $last = $';
+			my $last = substr $_, $len_last, length $_;
+		
 			my $level = length $1;
 			
 			if(uc($art_pattern) eq uc substr $last, 0, $art_len) {
@@ -365,22 +366,6 @@ sub test {
 		
 		######### логика
 		
-		if( $result->is_test ) {
-			if( $result->is_ok ) {
-				print "." if !$self->{log};
-				$count_ok++;
-			} else {
-				print "E" if !$self->{log};
-			}
-			
-			($current_test) = $result->raw =~ /(\d+)/;
-			
-			$current_line = $self->{lines}[$current_test];
-			
-			
-			print "$current_line: " if $self->{log};
-		}
-		
 		if( $result->is_comment ) {
 			$first = 2 if !$first;
 			push @fail, $result->raw;
@@ -412,6 +397,22 @@ sub test {
 			($count_pass, $count_tests) = split /\.\./, $result->raw;
 		}
 		
+		
+		if( $result->is_test ) {
+			if( $result->is_ok ) {
+				print "." if !$self->{log};
+				$count_ok++;
+			} else {
+				print "E" if !$self->{log};
+			}
+			
+			($current_test) = $result->raw =~ /(\d+)/;
+			
+			$current_line = $self->{lines}[$current_test];
+			
+			
+			print "$current_line: " if $self->{log};
+		}
 		
 		
 		######### статистика
@@ -492,8 +493,16 @@ sub test {
 	}
 	
 	if(!$self->{log}) {
-		print "$self->{first_error}\nпосле строки №$ERRORS[0][0]\n" if @ERRORS && $first == 1;
-		print "$FAIL[0][1]\nна строке №$FAIL[0][0]\n" if @FAIL && $first == 2;
+		if(@ERRORS && $first == 1) {
+			print $self->{first_error};
+			print "\nпосле строки № $ERRORS[0][0]\n";
+		}
+		
+		if(@FAIL && $first == 2) {
+			print $FAIL[0][1];
+			print "\nна строке № $FAIL[0][0]\n";
+		}
+
 	}
 	
 	$count_ok == $count_tests;

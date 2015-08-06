@@ -129,6 +129,7 @@ sub compile {
 	my $test_write = $art_pattern? 0: 1;
 	
 	# разбиваем
+	my $thisIsArticle = 1;
 	my ($thisIsTest, $thisIsCode) = (1,0);
 	my @test;
 	my @TEST;
@@ -139,6 +140,18 @@ sub compile {
 		
 		($thisIsCode, $thisIsTest) = (1,0), next if /^\[code\]\s*$/;
 		($thisIsCode, $thisIsTest) = (0,1), next if /^\[test\]\s*$/;
+		
+		my $detectCode = s/^(\t| {4})//;
+		
+		if($detectCode) {
+			print $articleFile "\n```perl\n" if $thisIsArticle;
+		
+			$thisIsArticle = 0;	
+		} else {
+			print $articleFile "```\n\n" if !$thisIsArticle;
+		
+			$thisIsArticle = 1;
+		}
 		
 		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
 		my $len_last = length($1) + length $2;
@@ -159,7 +172,7 @@ sub compile {
 		}
 		
 		######### [тест или код]
-		if(s/^(\t| {4})//) {
+		if(!$thisIsArticle) {
 		
 			###################### [code]
 			if($thisIsCode) {

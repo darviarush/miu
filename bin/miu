@@ -147,7 +147,7 @@ sub compile {
 			print $articleFile "\n```perl\n" if $thisIsArticle;
 		
 			$thisIsArticle = 0;	
-		} else {
+		} elsif(!/^\s*$/) {
 			print $articleFile "```\n\n" if !$thisIsArticle;
 		
 			$thisIsArticle = 1;

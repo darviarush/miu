@@ -15,7 +15,7 @@ my %opt = (
 );
 
 GetOptions(
-	"p|public" => \$opt{public},
+	#"p|public" => \$opt{public},
 	"t|test" => \$opt{test},
 	"l|log" => \$opt{log},
 	"s|stat" => \$opt{stat},
@@ -48,12 +48,12 @@ sub run {
 	my ($self) = @_;	
 	
 	if($self->{help}) {
+# -p, --public       опубликовать в интернте, см. etc/miu.sample.ini
 		print "miu [опции] [маска_файлов] [маска_разделов]
 
-miu компилирует файлы в код, тесты и статьи. Выполняет тесты и публикует статьи в интернете.
+miu компилирует файлы в код, тесты и статьи. Выполняет тесты
 		
 ОПЦИИ
-    -p, --public       опубликовать в интернте, см. etc/miu.sample.ini
     -t, --test         не компилировать: выполнить тесты
     -l, --log          лог в stdout
     -s, --stat         статистику в stdout

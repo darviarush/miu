@@ -8,6 +8,7 @@
 use common::sense;
 use Getopt::Long qw/:config no_ignore_case bundling/;
 
+
 my %opt = (
 	output => ".miu",
 	libdir => ".miu/lib",
@@ -16,6 +17,7 @@ my %opt = (
 
 GetOptions(
 	#"p|public" => \$opt{public},
+	"a|article" => \$opt{article_only},
 	"t|test" => \$opt{test},
 	"l|log" => \$opt{log},
 	"s|stat" => \$opt{stat},
@@ -25,10 +27,12 @@ GetOptions(
 	"h|help" => \$opt{help},
 );
 
-
 # маска файлов, маска заголовков
 ($opt{pattern}, $opt{art_pattern}) = @ARGV;
 
+eval {
+	require "Text/Markdown.pm";
+};
 
 my $miu = bless \%opt, "Miu";
 $miu->run;
@@ -54,6 +58,7 @@ sub run {
 miu компилирует файлы в код, тесты и статьи. Выполняет тесты
 		
 ОПЦИИ
+    -a, --article      не выполнять тесты: только компилировать
     -t, --test         не компилировать: выполнить тесты
     -l, --log          лог в stdout
     -s, --stat         статистику в stdout
@@ -80,19 +85,22 @@ miu компилирует файлы в код, тесты и статьи. В�
 		print "$path ";
 		
 		$self->{path} = $path;
+		
+	
 		$_ = $self->{output} . "/" . substr $path, length($self->{input}), length($path);
-		s/(?:\.miu)?\.\w+$/.markdown/i;
-		$self->{article_path} = $_;
-		s/\.\w+$/.t/;
-		$self->{test_path} = $_;
+		s/(?:\.miu)?\.\w+$//i;
+		$self->{article_path} = "$_.markdown";
+		$self->{test_path} = "$_.t";
+		$self->{html_path} = "$_.html";
+		$self->{bbcode_path} = "$_.bbcode";
 		
 		$_ = $self->{bindir} . "/" . substr $path, length($self->{input}), length($path);
 		s/(?:\.miu)?\.\w+$//i;
-		$self->{code_path} = $_;
+		$self->{code_path} = $_;	
 		
 		$self->compile if !$self->{test};
 				
-		exit unless $self->test;
+		exit unless $self->{article_only}? 1: $self->test;
 		
 	});
 	
@@ -108,19 +116,11 @@ sub compile {
 	my $path = $self->{path};
 	open my $file, "<:encoding(utf8)", $path or die "Не могу открыть файл miu $path: $!";
 	
-	# статья-файл
-	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу открыть файл статьи $self->{article_path}: $!";
-	
 	# файл кода
 	my $codeFile;
 	
 	# удаляем старый файл кода
 	unlink $self->{code_path};
-	
-	# тест-файл
-	$_ = $path;
-
-	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу открыть файл теста $self->{test_path}: $!";
 	
 	# подготавливаем разбитие по разделам статьи
 	my $art_pattern = $self->{art_pattern} // "";
@@ -136,6 +136,8 @@ sub compile {
 	my @TEST;
 	my $count_tests = 0;
 	my $lines = $self->{lines} = [1];
+	my $start_code = "\n```perl\n";
+	my $end_code = "```\n\n";
 	
 	while(<$file>) {
 		
@@ -149,11 +151,11 @@ sub compile {
 				my $i;
 				for($i=$#article; $i>=0 && $article[$i] =~ /^\s*$/; $i--) {
 				}
-				splice @article, $i+1, 0, "\n```perl\n";
+				splice @article, $i+1, 0, $start_code;
 			}
 			$thisIsArticle = 0;	
 		} elsif(!$detectEmptyLine) {
-			push @article, "```\n\n" if !$thisIsArticle;
+			push @article, $end_code if !$thisIsArticle;
 			$thisIsArticle = 1;
 		}
 	
@@ -327,15 +329,74 @@ $buf
 }
 
 ';
-	
-	print $testFile @TEST;
-	print $articleFile @article;
-	
-	close $testFile;
-	close $articleFile;
+
 	close $codeFile if $codeFile;
-	
 	close $file;
+
+	# тест-файл
+	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу открыть файл теста $self->{test_path}: $!";
+	print $testFile @TEST;
+	close $testFile;
+
+	# статья-файл
+	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу открыть файл статьи $self->{article_path}: $!";
+	print $articleFile @article;
+	close $articleFile;
+	
+	if(exists $Text::{"Markdown::"}) {
+	
+		my @alines;
+		my @bbcode;
+		my @code;
+		my $thisIsCode;
+		for my $line (@article) {
+			if($line eq $start_code) {
+				$thisIsCode = 1;
+				next;
+			}
+			
+			if($line eq $end_code) {
+				push @alines, @code;
+				@code = ();
+				$thisIsCode = 0;
+				next;
+			}
+
+			if($thisIsCode) {
+				push @code, "\t$line";
+			} else {
+				push @alines, $line;
+			}
+		}
+	
+		my $article = join "", @alines;
+		
+		my $m = Text::Markdown->new;
+		my $html = $m->markdown($article);
+		
+		# статья в формате html	
+		open my $articleFile, ">:encoding(utf8)", $self->{html_path} or die "Не могу открыть файл статьи $self->{html_path}: $!";
+		print $articleFile $html;
+		close $articleFile;
+	
+		my $bbcode = $self->markdown2bbcode($html);
+		
+		# статья в формате bbcode
+		open my $articleFile, ">:encoding(utf8)", $self->{bbcode_path} or die "Не могу открыть файл статьи $self->{bbcode_path}: $!";
+		print $articleFile $bbcode;
+		close $articleFile;
+		
+		$bbcode = $self->markdown2bbcode($html, "LOR");
+		# статья в формате lorcode
+		$_ = $self->{bbcode_path};
+		s!\.\w+$!.lorcode!;
+		open my $articleFile, ">:encoding(utf8)", $_ or die "Не могу открыть файл статьи $_: $!";
+		print $articleFile $bbcode;
+		close $articleFile;
+		
+	}
+	
+	
 	
 	$self->{count_tests} = $count_tests;
 	$self
@@ -582,16 +643,88 @@ sub packfile {
 }
 
 
-# сценарии загрузки на блоги и сайты
-sub scenario {
-	my ($self, $site) = @_;
+# переводит текст в bbcode
+sub markdown2bbcode {
+	my ($self, $html, $variant) = @_;
+	local $_ = $html;
 	
-	if($site eq "habrahabr" or $site eq "hh") {
-		print `curl `;
+	# Smartypants operates first so that attributes (e.g., URLs) don't get converted
+	if (1) {
+		if (eval { require "Text/SmartyPants.pm" }) {
+			$_ = Text::SmartyPants::process($_, 2); 
+		}
+		elsif (eval { require "Text/Typography.pm" }) {
+			$_ = Text::Typography::typography($_, 2); 
+		}
 	}
-	else {
+
+	# Simple elements
+	my %html2bb = (
+		strong     => 'b',
+		em         => 'i',
+		blockquote => 'quote',
+		hr         => 'hr',
+		u		   => 'u',
+		br         => 'br'
+	);
+	while (my($html, $bb) = each %html2bb) {
+		s{<(/|)$html[^>]*>}{[$1$bb]}g;
+	}
+	
+	# Convert links
+	s{<a
+		[^>]*?       # random attributes we don't care about
+		href="(.+?)" # target
+		[^>]*?       # more random attributes we don't care about
+	>
+		(.+?)        # text
+		</a>
+	}{[url="$1"]$2\[/url]}xgi;
+
+	# Undo paragraphs elements
+	s{</?p>}{}g;
+
+	s{\[code\]}{[ code]}g;
+	
+	# code
+	s{<pre><code lang="(\w+)">}      {[code=$1]}gi;
+	s{<pre><code>}      {[code=perl]}gi;
+	s{</code></pre>}    {[/code]}gi;
+	
+	
+	if($variant eq "LOR") {
+		# convert h1...h6
+		s{<h(\d)>}{[strong]}ig;
+		s{</h(\d)>}{[/strong]}ig;
+		
+		# code inline
+		s{<code>\s*}   {[inline]}g;
+		s{\s*</code>} {[/inline]}g;
 		
 	}
+	else {
+		# convert h1...h6
+		s{<h(\d)>}{"[size=" . int(100 / 6 * (6-$1) + 100) . "]"}ige;
+		s{</h(\d)>}{[/size]}ig;
+		
+		# code inline
+		s{<code>\s*}   {[color=red]}g;
+		s{\s*</code>} {[/color]}g;
+	}
+
 	
-	$self
+
+	# списки
+	s{<ul>}     {[list]}g;
+	s{<ol>}     {[list=1]}g;
+	s{</[uo]l>} {[/list]}g;
+	s{<li>}     {[*]}g;
+	s{</li>}    {}g;
+
+
+	# Decode HTML entities
+	if(eval { require "HTML/Entities.pm" }) {
+		$_ = HTML::Entities::decode_entities($_);
+	}
+	return $_;
 }

@@ -1,10 +1,9 @@
-PWD = `pwd`
 
 all: dist
 
 link:
-		rm /bin/miu
-		ln -s "$(PWD)/bin/miu" /bin/miu
+		rm -f /bin/miu
+		ln -s $(realpath bin/miu) /bin/miu
 
 
 README.md: miu/00-miu.miu.pl

@@ -28,7 +28,11 @@ GetOptions(
 );
 
 # маска файлов, маска заголовков
-($opt{pattern}, $opt{art_pattern}) = @ARGV;
+$opt{pattern} = [ split /:/, shift @ARGV ];
+$opt{art_pattern} = [@ARGV];
+
+utf8::decode($_) for @{$opt{pattern}};
+utf8::decode($_) for @{$opt{art_pattern}};
 
 eval {
 	require "Text/Markdown.pm";
@@ -45,6 +49,7 @@ $miu->run;
 # класс
 package Miu;
 
+use common::sense;
 use File::Find qw//;
 
 # парсит и запускает тесты
@@ -53,7 +58,7 @@ sub run {
 	
 	if($self->{help}) {
 # -p, --public       опубликовать в интернте, см. etc/miu.sample.ini
-		print "miu [опции] [маска_файлов] [маска_разделов]
+		print "miu [опции] [маски_файлов] [маска_разделов]...
 
 miu компилирует файлы в код, тесты и статьи. Выполняет тесты
 		
@@ -123,10 +128,8 @@ sub compile {
 	unlink $self->{code_path};
 	
 	# подготавливаем разбитие по разделам статьи
-	my $art_pattern = $self->{art_pattern} // "";
-	utf8::decode($art_pattern);
-	my $art_len = length($art_pattern);
-	my $test_write = $art_pattern? 0: 1;
+	my @art_pattern = @{$self->{art_pattern}};
+	my $test_write = @art_pattern? 0: 1;
 	
 	# разбиваем
 	my $thisIsArticle = 1;
@@ -164,16 +167,21 @@ sub compile {
 		
 		push @article, $_;
 
-		if($art_pattern && $thisIsHeader) {
+		if(@art_pattern && $thisIsHeader) {
 			my $last = substr $_, $len_last, length $_;
 		
 			my $level = length $1;
 			
-			if(uc($art_pattern) eq uc substr $last, 0, $art_len) {
-				$test_write = $level;
-			}
-			elsif($level <= $test_write) {
-				$test_write = 0;
+			for my $art_pattern (@art_pattern) {
+				my $art_len = length($art_pattern);
+				
+				if(uc($art_pattern) eq uc substr $last, 0, $art_len) {
+					$test_write = $level;
+					last;
+				}
+				elsif($level <= $test_write) {
+					$test_write = 0;
+				}
 			}
 		}
 		
@@ -598,28 +606,32 @@ sub post {
 # обходит файлы и вызывает для каждого найденного функцию
 sub find {
 	my ($self, $code) = @_;
+		
+	my @pattern = @{$self->{pattern}};
+	@pattern = "" if !@pattern;
 	
-	$self->{pattern} //= "";
-	$self->{pattern} =~ s!^\./!!;
+	for my $pattern (@pattern) {
 	
-	my $pattern = $self->{pattern};
+		$pattern =~ s!^\./!!;
 	
-	my $len = length $pattern;
-	my $path = $pattern =~ m!(.*)/!? $1: "";
-	$self->{input} = $path;
-	
-	File::Find::find({
-		no_chdir => 1,
-		wanted => sub {
-			my $path = $File::Find::name;
-			$path =~ s!^\./!!;
-			return if $pattern ne substr $path, 0, $len;
-			return if $path !~ m!\.miu(?:\.[^\./]+)?$!i;
-			return if !-f $path;
+		my $len = length $pattern;
+		my ($path) = $pattern =~ m!(.*)/!;
+		$self->{input} = $path;
+		
+		File::Find::find({
+			no_chdir => 1,
+			wanted => sub {
+				my $path = $File::Find::name;
+				$path =~ s!^\./!!;
+				return if $pattern ne substr $path, 0, $len;
+				return if $path !~ m!\.miu(?:\.[^\./]+)?$!i;
+				return if !-f $path;
 
-			$code->($path);
-		}
-	}, $path || ".");
+				$code->($path);
+			}
+		}, $path || ".");
+		
+	}
 	
 	$self
 }

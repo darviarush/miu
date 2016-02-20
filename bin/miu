@@ -147,11 +147,16 @@ sub compile {
 	
 	while(<$file>) {
 		
+		#s/[\r\n]*$/\n/;
+		
 		($init, $thisIsCode, $thisIsTest) = (0,1,0), next if /^\[code\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (0,0,1), next if /^\[test\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), next if /^\[init\]\s*$/;
 
 		my $detectEmptyLine = /^\s*$/;
+	
+		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
+		my $len_last = length($1) + length $2;
 	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
 			if($thisIsArticle) {
@@ -165,9 +170,6 @@ sub compile {
 			push @article, $end_code if !$thisIsArticle;
 			$thisIsArticle = 1;
 		}
-	
-		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
-		my $len_last = length($1) + length $2;
 		
 		push @article, $_;
 
@@ -292,7 +294,10 @@ sub compile {
 				};
 				
 				my $oper = "gt|lt|ne|eq|le|ge|==|!=|>|<|<=|>=|~|!~|startswith|endswith";
-				if( s/^(.*?)[ \t]#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*)$/$replace->()/eo ) {
+				if(/^\s*#/) {
+					push @test, $_;
+				}
+				elsif( s/^\s*(.*?)[ \t]#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {
 					push @test, $_;
 					push @TEST, @test;
 					@test = ();

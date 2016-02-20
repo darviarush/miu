@@ -231,7 +231,11 @@ sub compile {
 					
 					$op //= $op2;
 					
-					$end =~ s/^\s*(.*?)\s*$/$1/;
+					$end =~ s/^\s*(.*?)\s*$/$1/;	# избавляемся от начальных и конечных пробелов
+					
+					#my $title;
+					#$end =~ s/(?<=^|)#(.*)/ $title=; ""/e;
+					
 					if(!$code) {
 					
 						if($op eq "~" or $op eq "!~") {
@@ -277,7 +281,10 @@ sub compile {
 					$start = "scalar($start)";
 					$end = "scalar($end)";
 					
-					if(!$op) {
+					if(!$op && !$code) {
+						"is( $start, $end );";
+					}
+					elsif(!$op) {
 						"is_deeply( $start, $end );";
 					} elsif($op eq "startswith") {
 						"is(substr($start, 0, length(\$_ret = $end)), \$_ret);";

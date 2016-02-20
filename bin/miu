@@ -61,6 +61,8 @@ sub run {
 		print "miu [опции] [маски_файлов] [маска_разделов]...
 
 miu компилирует файлы в код, тесты и статьи. Выполняет тесты
+
+маски_файлов задаются через \":\"
 		
 ОПЦИИ
     -a, --article      не выполнять тесты: только компилировать
@@ -130,6 +132,7 @@ sub compile {
 	# подготавливаем разбитие по разделам статьи
 	my @art_pattern = @{$self->{art_pattern}};
 	my $test_write = @art_pattern? 0: 1;
+	my $init = 0;
 	
 	# разбиваем
 	my $thisIsArticle = 1;
@@ -144,8 +147,9 @@ sub compile {
 	
 	while(<$file>) {
 		
-		($thisIsCode, $thisIsTest) = (1,0), next if /^\[code\]\s*$/;
-		($thisIsCode, $thisIsTest) = (0,1), next if /^\[test\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,1,0), next if /^\[code\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,0,1), next if /^\[test\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (1,0,1), next if /^\[init\]\s*$/;
 
 		my $detectEmptyLine = /^\s*$/;
 	
@@ -214,7 +218,7 @@ sub compile {
 			}
 			
 			###################### [test]
-			elsif($thisIsTest && $test_write) {
+			elsif($thisIsTest && ($test_write || $init)) {
 				
 				my $replace = sub {
 					$count_tests ++;

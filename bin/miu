@@ -41,7 +41,7 @@ eval {
 	require "Text/Markdown.pm";
 };
 
-my $miu = bless \%opt, "Miu";
+my $miu = bless \%opt, "RrruMiu";
 $miu->run;
 
 # if( $miu->test && $miu->{public}) {
@@ -50,7 +50,7 @@ $miu->run;
 
 
 # класс
-package Miu;
+package RrruMiu;
 
 use common::sense;
 use File::Find qw//;

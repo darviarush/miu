@@ -1,9 +1,12 @@
 #!/usr/bin/env perl
 # Система тестирования, документирования и публикаций в интернете
+# Автор: Косьмина О. Ярослав
+# Сайт проекта:	https://github.com/darviarush/miu
+#				https://bitbucket.org/darij/miu
+# Сайт автора:	http://darviarush.narod.ru
+# Лицензия:		BSD
 
-#package RrruMiu;
-
-#chdir "$`/.." if $0 =~ /\/[^\/]*$/;
+# todo: http://pandoc.org/demos.html
 
 use common::sense;
 use Getopt::Long qw/:config no_ignore_case bundling/;
@@ -47,7 +50,7 @@ $miu->run;
 
 
 # класс
-package Miu;
+package RrruMiu;
 
 use common::sense;
 use File::Find qw//;
@@ -58,9 +61,9 @@ sub run {
 	
 	if($self->{help}) {
 # -p, --public       опубликовать в интернте, см. etc/miu.sample.ini
-		print "miu [опции] [маски_файлов] [маска_разделов]...
+		print "[rrru]miu [опции] [маски_файлов] [маска_разделов]...
 
-miu компилирует файлы в код, тесты и статьи. Выполняет тесты
+rrrumiu компилирует файлы в код, тесты и статьи. Выполняет тесты
 
 маски_файлов задаются через \":\"
 		
@@ -79,6 +82,10 @@ miu компилирует файлы в код, тесты и статьи. В�
 	
 	mkdir $self->{output} unless -e $self->{output};
 	
+	# удаляем /
+	$self->{input} =~ s!/$!!;
+	$self->{output} =~ s!/$!!;	
+	
 	$self->{log} = 1 if $self->{stat};
 	
 	my $count = 0;
@@ -93,15 +100,17 @@ miu компилирует файлы в код, тесты и статьи. В�
 		
 		$self->{path} = $path;
 		
+		my $sub = substr $path, length $self->{input};
+		$sub =~ s!^/!!;
 	
-		$_ = $self->{output} . "/" . substr $path, length($self->{input}), length($path);
-		s/(?:\.miu)?\.\w+$//i;
+		$_ = $self->{output} . "/" . $sub;
+		s/(?:\.miu)?\.\w+$//i;	# удаляем расширение
 		$self->{article_path} = "$_.markdown";
 		$self->{test_path} = "$_.t";
 		$self->{html_path} = "$_.html";
 		$self->{bbcode_path} = "$_.bbcode";
 		
-		$_ = $self->{bindir} . "/" . substr $path, length($self->{input}), length($path);
+		$_ = $self->{bindir} . "/" . $sub;
 		s/(?:\.miu)?\.\w+$//i;
 		$self->{code_path} = $_;	
 		
@@ -245,7 +254,13 @@ sub compile {
 							$end =~ s/\\s/ /g;
 							$end = "\"$end\"";
 						}
+						
 					}
+					else {
+						$end =~ s/;$//;
+						$end = "scalar($end)";
+					}
+					
 					
 					my $_test = "";
 					my $_cmp = "";
@@ -275,11 +290,7 @@ sub compile {
 						$start = "\$!";
 					}
 					
-					$start =~ s/;$//;
-					$end =~ s/;$//;
-					
 					$start = "scalar($start)";
-					$end = "scalar($end)";
 					
 					if(!$op && !$code) {
 						"is( $start, $end );";
@@ -304,7 +315,7 @@ sub compile {
 				if(/^\s*#/) {
 					push @test, $_;
 				}
-				elsif( s/^\s*(.*?)[ \t]#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {
+				elsif( s/^\s*(.*?);*[ \t]+#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {
 					push @test, $_;
 					push @TEST, @test;
 					@test = ();
@@ -756,3 +767,6 @@ sub markdown2bbcode {
 	}
 	return $_;
 }
+
+
+1;

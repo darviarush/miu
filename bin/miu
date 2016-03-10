@@ -50,7 +50,7 @@ $miu->run;
 
 
 # класс
-package RrruMiu;
+package Miu;
 
 use common::sense;
 use File::Find qw//;

@@ -148,6 +148,7 @@ sub compile {
 	my ($thisIsTest, $thisIsCode) = (1,0);
 	my @article;
 	my @test;
+	my @init;		# тут находятся инициализируующие строки
 	my @TEST;
 	my $count_tests = 0;
 	my $lines = $self->{lines} = [1];
@@ -230,6 +231,8 @@ sub compile {
 			
 			###################### [test]
 			elsif($thisIsTest && ($test_write || $init)) {
+				
+				push(@TEST, @init), @init = () if $test_write;
 				
 				my $replace = sub {
 					$count_tests ++;
@@ -317,7 +320,7 @@ sub compile {
 				}
 				elsif( s/^\s*(.*?);*[ \t]+#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {
 					push @test, $_;
-					push @TEST, @test;
+					if($test_write) { push @TEST, @test } else { push @init, @test }
 					@test = ();
 				}
 				else {

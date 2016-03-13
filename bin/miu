@@ -335,7 +335,7 @@ sub compile {
 			
 		} else {
 			if(@test) {
-				push @TEST, @test;
+				if($test_write) { push @TEST, @test } else { push @init, @test }
 				@test = ();
 			}
 		}

@@ -303,22 +303,26 @@ sub compile {
 					}
 					
 					$start = "scalar($start)";
+
+					my $desc = $_;
+					$desc =~ s/\s*$//;
+					$desc =~ s/'/\\'/g;
+					$desc = "'$desc'";
 					
 					if(!$op && !$code) {
-						"is( $start, $end );";
-					}
-					elsif(!$op) {
-						"is_deeply( $start, $end );";
+						"is( $start, $end, $desc );";
+					} elsif(!$op) {
+						"is_deeply( $start, $end, $desc );";
 					} elsif($op eq "startswith") {
-						"is(substr($start, 0, length(\$_ret = $end)), \$_ret);";
+						"is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
 					} elsif($op eq "endswith") {
-						"is(substr($start, -length(\$_ret = $end)), \$_ret);";
+						"is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
 					} elsif($op eq "~") {
-						"like( $start, $end );"
+						"like( $start, $end, $desc );"
 					} elsif($op eq "!~") {
-						"unlike( $start, $end );"
+						"unlike( $start, $end, $desc );"
 					} else {
-						"cmp_ok( $start, '$op', $end );";
+						"cmp_ok( $start, '$op', $end, $desc );";
 					}
 					
 				};
@@ -340,7 +344,7 @@ sub compile {
 			
 		} else {
 			if(@test) {
-				push @TEST, @test;
+				if($test_write) { push @TEST, @test } else { push @init, @test }
 				@test = ();
 			}
 		}
@@ -779,6 +783,5 @@ sub markdown2bbcode {
 	}
 	return $_;
 }
-
 
 1;

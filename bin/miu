@@ -22,6 +22,7 @@ GetOptions(
 	#"p|public" => \$opt{public},
 	"a|article" => \$opt{article_only},
 	"t|test" => \$opt{test},
+	"i|inspect" => \$opt{inspect},
 	"l|log" => \$opt{log},
 	"s|stat" => \$opt{stat},
 	"o|outdir=s" => \$opt{output},
@@ -70,6 +71,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 ОПЦИИ
     -a, --article      не выполнять тесты: только компилировать
     -t, --test         не компилировать: выполнить тесты
+    -i, --inspect      тест в stdout
     -l, --log          лог в stdout
     -s, --stat         статистику в stdout
     -o, --outdir=dir   директория для скомпиллированных файлов
@@ -115,8 +117,15 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 		$self->{code_path} = $_;	
 		
 		$self->compile if !$self->{test};
-				
-		exit unless $self->{article_only}? 1: $self->test;
+		
+		if($self->{inspect}) {
+			open my $f, "<", $self->{test_path} or die "не открыт файл теста $self->{test_path}: $!";
+			print <$f>;
+			close $f;
+		}
+		else {
+			exit unless $self->{article_only}? 1: $self->test;
+		}
 		
 	});
 	

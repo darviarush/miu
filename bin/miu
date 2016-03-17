@@ -45,10 +45,6 @@ eval {
 my $miu = bless \%opt, "RrruMiu";
 $miu->run;
 
-# if( $miu->test && $miu->{public}) {
-	# $miu->post;
-# }
-
 
 # класс
 package RrruMiu;
@@ -357,6 +353,7 @@ sub compile {
 	unshift @TEST, '#!/usr/bin/env perl
 # сгенерировано miu
 	
+use open ":std", ":encoding(utf8)";
 use Test::More tests => ' . $count_tests . ';
 
 my ($_f, $_ret);
@@ -597,7 +594,12 @@ sub test {
 	close $log;
 	close $stat;
 
-	print "\n";
+	if($count_ok == $count_tests) {
+		print " ok\n";
+	}
+	else {
+		print " fail\n";
+	}
 	
 	
 	
@@ -667,7 +669,7 @@ sub find {
 				my $path = $File::Find::name;
 				$path =~ s!^\./!!;
 				return if $pattern ne substr $path, 0, $len;
-				return if $path !~ m!\.miu(?:\.[^\./]+)?$!i;
+				#return if $path !~ m!\.(miu|man|human)(?:\.[^\./]+)?$!i;
 				return if !-f $path;
 
 				$code->($path);

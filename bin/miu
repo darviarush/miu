@@ -487,7 +487,7 @@ sub test {
 	my $count_ok = 0; # количество пройденных тестов
 	my ($count_pass, $count_tests);	# количество файлов-тестов (1) и количество всех тестов
 	my $current_test;
-	my $current_line;
+	my $current_line = 0;
 	
 	while ( my $result = $parser->next ) {
 		
@@ -607,6 +607,8 @@ sub test {
 	$self->{fail} = [@FAIL];
 	$self->{errors} = [@ERRORS];
 	
+	#use Data::Dumper; print Dumper(\@FAIL, \@ERRORS);
+	
 	######### первая ошибка
 	if(@ERRORS) {
 		$_ = $ERRORS[0][1];
@@ -622,15 +624,16 @@ sub test {
 		@fail = split /\n/, $FAIL[$#FAIL][1];
 		$self->{test_status} = pop @fail;
 		$FAIL[$#FAIL][1] = join "\n", @fail;
+		pop @FAIL if $FAIL[$#FAIL][1] eq "";
 	}
 	
 	if(!$self->{log}) {
-		if(@ERRORS && $first == 1) {
+		if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
 			print $self->{first_error};
 			print "\nпосле строки № $ERRORS[0][0]\n";
 		}
 		
-		if(@FAIL && $first == 2) {
+		if(@FAIL) {	# (@FAIL && $first == 2)
 			print $FAIL[0][1];
 			print "\nна строке № $FAIL[0][0]\n";
 		}

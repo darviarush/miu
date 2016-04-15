@@ -173,6 +173,7 @@ sub compile {
 		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
 		my $len_last = length($1) + length $2;
 	
+	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
 			if($thisIsArticle) {
 				my $i;
@@ -380,14 +381,16 @@ $buf
 
 	close $codeFile if $codeFile;
 	close $file;
-
+	
 	# тест-файл
-	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу открыть файл теста $self->{test_path}: $!";
+	mkdir $`, 0744 while $self->{test_path} =~ m!/!g;
+	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу записать файл теста $self->{test_path}: $!";
 	print $testFile @TEST;
 	close $testFile;
 
 	# статья-файл
-	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу открыть файл статьи $self->{article_path}: $!";
+	mkdir $`, 0744 while $self->{article_path} =~ m!/!g;
+	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу записать файл статьи $self->{article_path}: $!";
 	print $articleFile @article;
 	close $articleFile;
 	

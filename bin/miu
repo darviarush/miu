@@ -135,7 +135,8 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 			#}			
 		}
 		else {
-			exit unless $self->{article_only}? 1: $self->test;
+			exit if $self->{article_only};
+			exit 1 if !$self->test;
 		}
 		
 	});
@@ -305,8 +306,8 @@ sub compile {
 						$start = "___get()";
 					}
 					elsif($who eq "\@") {
-						unshift @test, "eval { ";
-						push @test, "$start }; ";
+						#unshift @test, "eval { ";
+						push @test, "eval { $start }; ";
 						$start = "\$@";
 					}
 					elsif($who eq "!") {

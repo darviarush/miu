@@ -22,7 +22,7 @@ GetOptions(
 	#"p|public" => \$opt{public},
 	"a|article" => \$opt{article_only},
 	"t|test" => \$opt{test},
-	"i|inspect" => \$opt{inspect},
+	"i|inspect:s" => \$opt{inspect},
 	"l|log" => \$opt{log},
 	"s|stat" => \$opt{stat},
 	"o|outdir=s" => \$opt{output},
@@ -65,15 +65,15 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 маски_файлов задаются через \":\"
 		
 ОПЦИИ
-    -a, --article      не выполнять тесты: только компилировать
-    -t, --test         не компилировать: выполнить тесты
-    -i, --inspect      тест в stdout
-    -l, --log          лог в stdout
-    -s, --stat         статистику в stdout
-    -o, --outdir=dir   директория для скомпиллированных файлов
-    -u, --libdir=dir   директория для пакетов perl
-    -b, --bindir=dir   директория для файлов кода
-    -h, --help         эта справка
+    -a, --article         не выполнять тесты: только компилировать
+    -t, --test            не компилировать: выполнить тесты
+    -i, --inspect[=n-k|l] тест в stdout. n - от строки, k - до строки. l - строка
+    -l, --log             лог в stdout
+    -s, --stat            статистику в stdout
+    -o, --outdir=dir      директория для скомпиллированных файлов
+    -u, --libdir=dir      директория для пакетов perl
+    -b, --bindir=dir      директория для файлов кода
+    -h, --help            эта справка
 ";
 		exit;
 	}
@@ -114,10 +114,25 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 		
 		$self->compile if !$self->{test};
 		
-		if($self->{inspect}) {
+		if(defined $self->{inspect}) {
+			# Syntax::Highlight::Engine::Simple
+			# 
+			#`/usr/bin/env mcedit "$self->{test_path}"`;
+			#if($? != 0) {
+			
+			my ($from, $to) = split /-/, $self->{inspect};
+			
+			$to //= $from;
+			
+			print "\n";
 			open my $f, "<", $self->{test_path} or die "не открыт файл теста $self->{test_path}: $!";
-			print <$f>;
+			while(<$f>) {	
+				if( $from eq "" || $. >= $from && $. <= $to ) {
+					print join "", $., "\t", $_;
+				}
+			}
 			close $f;
+			#}			
 		}
 		else {
 			exit unless $self->{article_only}? 1: $self->test;

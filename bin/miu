@@ -135,8 +135,12 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 			#}			
 		}
 		else {
-			exit if $self->{article_only};
-			exit 1 if !$self->test;
+			if($self->{article_only}) {
+				print "\n";
+			} else {
+				exit 1 if !$self->test;
+			}
+			
 		}
 		
 	});

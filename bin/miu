@@ -368,6 +368,11 @@ sub compile {
 		
 	}
 	
+	if(@test) {
+		if($test_write) { push @TEST, @test } else { push @init, @test }
+		@test = ();
+	}
+	
 	my $output = $self->{output};
 	$output =~ s![\"]!\\$&!g;
 	

@@ -223,6 +223,8 @@ sub compile {
 				}
 				elsif($level <= $test_write) {
 					$test_write = 0;
+					push @TEST, @test;
+					@test = ();
 				}
 			}
 		}
@@ -367,7 +369,7 @@ sub compile {
 		}
 		
 	}
-	
+		
 	if(@test) {
 		if($test_write) { push @TEST, @test } else { push @init, @test }
 		@test = ();

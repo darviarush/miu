@@ -193,6 +193,11 @@ sub compile {
 		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
 		my $len_last = length($1) + length $2;
 	
+		if($thisIsHeader && $test_write) {
+			my $text = ("=" x length $1) . $2 . $';
+			$text =~ s/"/\\"/g;
+			push @TEST, "print STDERR \"$text\";\n";
+		}
 	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
 			if($thisIsArticle) {

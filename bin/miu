@@ -540,12 +540,14 @@ sub test {
 		
 		if( $result->is_unknown ) {
 		
-			push @errors, $result->raw;
-			$first = 1 if !$first;
-			
-			if(!$was_fail) {
-				print "F" if !$self->{log};
-				$was_fail = 1;
+			if($result->raw !~ /^=/) {
+				push @errors, $result->raw;
+				$first = 1 if !$first;
+				
+				if(!$was_fail) {
+					print "F" if !$self->{log};
+					$was_fail = 1;
+				}
 			}
 		} else {
 			$was_fail = 0;

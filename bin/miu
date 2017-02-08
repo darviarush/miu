@@ -385,6 +385,8 @@ sub compile {
 	
 	unshift @TEST, '#!/usr/bin/env perl
 # сгенерировано miu
+
+use utf8;
 	
 use open ":std", ":encoding(utf8)";
 use Test::More tests => ' . $count_tests . ';

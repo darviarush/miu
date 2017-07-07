@@ -157,11 +157,8 @@ sub compile {
 	my $path = $self->{path};
 	open my $file, "<:encoding(utf8)", $path or die "Не могу открыть файл miu $path: $!";
 	
-	# файл кода
-	my $codeFile;
-	
 	# удаляем старый файл кода
-	unlink $self->{code_path};
+	#unlink $self->{code_path};
 	
 	# подготавливаем разбитие по разделам статьи
 	my @art_pattern = @{$self->{art_pattern}};
@@ -184,9 +181,10 @@ sub compile {
 		
 		#s/[\r\n]*$/\n/;
 		
-		($init, $thisIsCode, $thisIsTest) = (0,1,0), next if /^\[code\]\s*$/;
-		($init, $thisIsCode, $thisIsTest) = (0,0,1), next if /^\[test\]\s*$/;
-		($init, $thisIsCode, $thisIsTest) = (1,0,1), next if /^\[init\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest, next if /^\[test\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
+        ($init, $thisIsCode, $thisIsTest) = (0,1,0), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
+        
 
 		my $detectEmptyLine = /^\s*$/;
 	
@@ -206,7 +204,7 @@ sub compile {
 				}
 				splice @article, $i+1, 0, $start_code;
 			}
-			$thisIsArticle = 0;	
+			$thisIsArticle = 0;
 		} elsif(!$detectEmptyLine) {
 			push @article, $end_code if !$thisIsArticle;
 			$thisIsArticle = 1;
@@ -239,27 +237,8 @@ sub compile {
 		
 			###################### [code]
 			if($thisIsCode) {
-				
-				if(/^\s*package ([\w:]+)/) {
-					my $package = $1;
-					close($codeFile), $codeFile = undef if $codeFile;
-					if($package eq "main") {
-						$_ = "";
-					} else {
-						$codeFile = $self->packfile($package, $path);
-					}
-				}
-				
-				if(!$codeFile && !/^\s*$/) {
-					my $code_path = $self->{code_path};
-					my $exists = -e $code_path;
-					mkdir $` while $code_path =~ m!/!g;
-					open $codeFile, ">>", $code_path or die "Не могу открыть файл для записи кода $code_path: $!";
-					chmod 0744, $codeFile;
-					print $codeFile "#!/usr/bin/perl\n###### Файл сгенерирован miu из файла $path\n" if !$exists;
-				}
-				
-				print $codeFile $_ if $codeFile;
+                my $codeFile = $self->{codeFile};
+				print $codeFile $_;
 			}
 			
 			###################### [test]
@@ -413,7 +392,7 @@ $buf
 
 ';
 
-	close $codeFile if $codeFile;
+	close $_ for values %{$self->{codeFiles}};
 	close $file;
 	
 	# тест-файл
@@ -739,6 +718,50 @@ sub packfile {
 	print $codeFile "######### Файл создан автоматически miu из файла $ipath\n";
 	
 	$codeFile
+}
+
+# создаёт файл кода
+sub tocode {
+	my ($self, $path) = @_;
+
+    my $codeFile = $self->{codeFiles}{$path};
+    $self->{codeFile} = $codeFile, return if $codeFile;
+    
+    my $realpath = $path;
+    
+    $path = "$self->{libdir}/$path" if $path !~ /^\.?\//;
+    
+    my $exists = -e $path;
+    my $codeFile;
+    if(!$exists) {
+        # создаём директории
+        mkdir $` while $path =~ m!/!g;
+
+        # код-файл
+        open $codeFile, ">", $path or die "Не могу создать файл кода $path: $!";
+    } else {
+        open $codeFile, ">", $path or die "Не могу открыть файл кода $path: $!";
+    }
+    
+    $self->{codeFiles}{$realpath} = $self->{codeFile} = $codeFile;
+    
+    print $codeFile "######### Файл создан автоматически miu из файла $self->{path} (строка: $.)\n";
+    
+	$self
+}
+
+# переходим на тест
+sub totest {
+	my ($self) = @_;
+    $self->{codeFile} = undef;
+	$self
+}
+
+# переходим на инициализатор теста
+sub toinit {
+	my ($self) = @_;
+    $self->totest;
+	$self
 }
 
 

@@ -139,6 +139,7 @@ sub A { print "A" }
 use A::A;
 &A::A::A; #>> A
 
+@@./.miu/test.pl
 
 use lib ".miu/lib";
 use A::A;
@@ -149,7 +150,6 @@ use A::A;
 **[test]**
 
 ```perl
-@@./.miu/test.pl
 
 require ".miu/test.pl"; #>> A
 `perl .miu/test.pl` # A

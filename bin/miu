@@ -183,7 +183,7 @@ sub compile {
 		
 		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest, next if /^\[test\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
-        ($init, $thisIsCode, $thisIsTest) = (0,1,0), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
+        ($init, $thisIsCode, $thisIsTest) = (0,1,0), push(@article, "`\@\@$1`\n"), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
         
 
 		my $detectEmptyLine = /^\s*$/;

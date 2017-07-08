@@ -149,6 +149,7 @@ use A::A;
 
 ```perl
 
+require ".miu/test.pl"; #>> A
 `perl .miu/test.pl` # A
 
 ```

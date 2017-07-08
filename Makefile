@@ -20,4 +20,7 @@ dist: README.md
 		git push github master
 		
 clean:
-	rm -r README.md miu/.miu/
+		rm -r README.md miu/.miu/
+
+test:
+		cd miu && miu 00

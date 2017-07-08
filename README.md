@@ -120,9 +120,9 @@ print "123\n";
 Код программы так же может быть записан в файл miu. Он так же должен иметь отступ.
 Чтобы переключатся между кодом и тестом нужно использовать @@файл и `[test]` с начала строки.
 
-`@@A/A.pm`
-
 ```perl
+@@A/A.pm
+
 
 package A::A;
 
@@ -139,7 +139,6 @@ sub A { print "A" }
 use A::A;
 &A::A::A; #>> A
 
-`@@./.miu/test.pl`
 
 use lib ".miu/lib";
 use A::A;
@@ -150,6 +149,7 @@ use A::A;
 **[test]**
 
 ```perl
+@@./.miu/test.pl
 
 require ".miu/test.pl"; #>> A
 `perl .miu/test.pl` # A

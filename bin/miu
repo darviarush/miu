@@ -175,6 +175,7 @@ sub compile {
 	my $count_tests = 0;
 	my $lines = $self->{lines} = [1];
 	my $start_code = "\n```perl\n";
+	my $start_path_name = "";
 	my $end_code = "```\n\n";
 	
 	while(<$file>) {
@@ -183,7 +184,7 @@ sub compile {
 		
 		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest, next if /^\[test\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
-        ($init, $thisIsCode, $thisIsTest) = (0,1,0), push(@article, "`\@\@$1`\n"), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
+        ($init, $thisIsCode, $thisIsTest) = (0,1,0), $start_path_name = "\@\@$1\n", $self->tocode($1), next if /^\@\@(.*?)\s*$/;
         
 
 		my $detectEmptyLine = /^\s*$/;
@@ -202,7 +203,8 @@ sub compile {
 				my $i;
 				for($i=$#article; $i>=0 && $article[$i] =~ /^\s*$/; $i--) {
 				}
-				splice @article, $i+1, 0, $start_code;
+				splice @article, $i+1, 0, $start_code, $start_path_name;
+				$start_path_name = "";
 			}
 			$thisIsArticle = 0;
 		} elsif(!$detectEmptyLine) {

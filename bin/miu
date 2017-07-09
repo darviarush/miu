@@ -746,6 +746,7 @@ sub tocode {
     }
     
     $self->{codeFiles}{$realpath} = $self->{codeFile} = $codeFile;
+	$self->{codePath} = $realpath;
     
     print $codeFile "######### Файл создан автоматически miu из файла $self->{path} (строка: $.)\n";
     
@@ -763,6 +764,29 @@ sub totest {
 sub toinit {
 	my ($self) = @_;
     $self->totest;
+	$self
+}
+
+# печатает в тест
+sub testln {
+	my ($self, $s) = @_;
+    
+	$self->{map_test}{$.} = @{$self->{testfile}};
+	push @{$self->{testfile}}, "$s\n";
+	
+	$self
+}
+
+# печатает в текущий файл кода
+sub println {
+	my ($self, $s) = @_;
+    
+	my $path = $self->{codePath};
+	my $codefile = $self->{codefile}{$path} //= [];
+	
+	$self->{map}{$path}{$.} = @$codefile;
+	push @$codefile, "$s\n";
+	
 	$self
 }
 

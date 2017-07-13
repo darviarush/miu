@@ -154,12 +154,13 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 sub compile {
 	my ($self) = @_;
 	
+    # открываем файл
 	my $path = $self->{path};
 	open my $file, "<:encoding(utf8)", $path or die "Не могу открыть файл miu $path: $!";
-	
-	# удаляем старый файл кода
-	#unlink $self->{code_path};
-	
+		
+    # чистим переменные
+    $self->clear->totest;
+        
 	# подготавливаем разбитие по разделам статьи
 	my @art_pattern = @{$self->{art_pattern}};
 	my $test_write = @art_pattern? 0: 1;
@@ -169,9 +170,6 @@ sub compile {
 	my $thisIsArticle = 1;
 	my ($thisIsTest, $thisIsCode) = (1,0);
 	my @article;
-	my @test;
-	my @init;		# тут находятся инициализируующие строки
-	my @TEST;
 	my $count_tests = 0;
 	my $lines = $self->{lines} = [1];
 	my $start_code = "\n```perl\n";
@@ -179,8 +177,6 @@ sub compile {
 	my $end_code = "```\n\n";
 	
 	while(<$file>) {
-		
-		#s/[\r\n]*$/\n/;
 		
 		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest, next if /^\[test\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
@@ -194,8 +190,9 @@ sub compile {
 	
 		if($thisIsHeader && $test_write) {
 			my $text = ("=" x length $1) . $2 . $';
-			$text =~ s/"/\\"/g;
-			push @TEST, "print STDERR \"$text\";\n";
+            $text =~ s/\s+$//g;
+			$text =~ s/'/\\'/g;
+			$self->println("print STDERR '$text' . \"\\n\";");
 		}
 	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
@@ -213,7 +210,7 @@ sub compile {
 		}
 		
 		push @article, $_;
-
+        
 		if(@art_pattern && $thisIsHeader) {
 			my $last = substr $_, $len_last, length $_;
 		
@@ -228,25 +225,22 @@ sub compile {
 				}
 				elsif($level <= $test_write) {
 					$test_write = 0;
-					push @TEST, @test;
-					@test = ();
 				}
 			}
 		}
 		
+        s!\s+$!!;
+        
 		######### [тест или код]
 		if(!$thisIsArticle) {
 		
 			###################### [code]
 			if($thisIsCode) {
-                my $codeFile = $self->{codeFile};
-				print $codeFile $_;
+                $self->println($_);
 			}
 			
 			###################### [test]
 			elsif($thisIsTest && ($test_write || $init)) {
-				
-				push(@TEST, @init), @init = () if $test_write;
 				
 				my $replace = sub {
 					$count_tests ++;
@@ -258,10 +252,7 @@ sub compile {
 					$op //= $op2;
 					
 					$end =~ s/^\s*(.*?)\s*$/$1/;	# избавляемся от начальных и конечных пробелов
-					
-					#my $title;
-					#$end =~ s/(?<=^|)#(.*)/ $title=; ""/e;
-					
+										
 					if(!$code) {
 					
 						if($op eq "~" or $op eq "!~") {
@@ -281,29 +272,27 @@ sub compile {
 					
 					my $_test = "";
 					my $_cmp = "";
-					
+					my $begin = "";
+                    
 					# if(defined $fileno) { # 6>
 						# unshift @test, "___std($fileno);\n";
 						# push @test, $start, "; ___res($fileno);\n";
 						# $start = "___get()";
 					# }
-					if($who eq ">>") {	#STDOUT
-						unshift @test, "___std(\\*STDOUT);\n";
-						push @test, $start, "; ___res(\\*STDOUT);\n";
+					if($who eq ">>") {	    #STDOUT
+                        $begin = "___std(\\*STDOUT); $start; ___res(\\*STDOUT); ";
 						$start = "___get()";
 					}
 					elsif($who eq "&>") {	#STDERR
-						unshift @test, "___std(\\*STDERR);\n";
-						push @test, $start, "; ___res(\\*STDERR);\n";
+                        $begin = "___std(\\*STDERR); $start; ___res(\\*STDERR); ";
 						$start = "___get()";
 					}
 					elsif($who eq "\@") {
-						#unshift @test, "eval { ";
-						push @test, "eval { $start }; ";
+                        $begin = "eval { $start }; ";
 						$start = "\$@";
 					}
 					elsif($who eq "!") {
-						push @test, "$start; ";
+                        $begin = "$start; ";
 						$start = "\$!";
 					}
 					
@@ -314,57 +303,44 @@ sub compile {
 					$desc =~ s/'/\\'/g;
 					$desc = "'$desc'";
 					
-					if(!$op && !$code) {
-						"is( $start, $end, $desc );";
-					} elsif(!$op) {
-						"is_deeply( $start, $end, $desc );";
-					} elsif($op eq "startswith") {
-						"is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
-					} elsif($op eq "endswith") {
-						"is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
-					} elsif($op eq "~") {
-						"like( $start, $end, $desc );"
-					} elsif($op eq "!~") {
-						"unlike( $start, $end, $desc );"
-					} else {
-						"cmp_ok( $start, '$op', $end, $desc );";
-					}
+                    $begin . do {
+                        if(!$op && !$code) {
+                            "is( $start, $end, $desc );";
+                        } elsif(!$op) {
+                            "is_deeply( $start, $end, $desc );";
+                        } elsif($op eq "startswith") {
+                            "is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
+                        } elsif($op eq "endswith") {
+                            "is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
+                        } elsif($op eq "~") {
+                            "like( $start, $end, $desc );"
+                        } elsif($op eq "!~") {
+                            "unlike( $start, $end, $desc );"
+                        } else {
+                            "cmp_ok( $start, '$op', $end, $desc );";
+                        }
+                    };
 					
 				};
 				
 				my $oper = "gt|lt|ne|eq|le|ge|==|!=|>|<|<=|>=|~|!~|startswith|endswith";
-				if(/^\s*#/) {
-					push @test, $_;
-				}
-				elsif( s/^\s*(.*?);*[ \t]+#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {
-					push @test, $_;
-					if($test_write) { push @TEST, @test } else { push @init, @test }
-					@test = ();
-				}
-				else {
-					push @test, $_;
-				}
+				if(/^\s*#/) {}
+				elsif( s/^\s*(.*?);*[ \t]+#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {}
 				
+                $self->println($_);
+                
 			}
 			
-		} else {
-			if(@test) {
-				if($test_write) { push @TEST, @test } else { push @init, @test }
-				@test = ();
-			}
 		}
 		
 	}
 		
-	if(@test) {
-		if($test_write) { push @TEST, @test } else { push @init, @test }
-		@test = ();
-	}
-	
+
+    # дополняем тест
 	my $output = $self->{output};
 	$output =~ s![\"]!\\$&!g;
 	
-	unshift @TEST, '#!/usr/bin/env perl
+	$self->unshift_test('#!/usr/bin/env perl
 # сгенерировано miu
 
 use utf8;
@@ -392,16 +368,28 @@ close $f;
 $buf
 }
 
-';
+');
 
-	close $_ for values %{$self->{codeFiles}};
-	close $file;
+        
+        
+	close $file;    # закрываем файл miu
 	
-	# тест-файл
+  	# создаём тест-файл
 	mkdir $`, 0744 while $self->{test_path} =~ m!/!g;
 	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу записать файл теста $self->{test_path}: $!";
-	print $testFile @TEST;
-	close $testFile;
+    $self->{codeFiles}{$self->{test_path}} = $testFile;
+
+    
+    # заполняем файлы кода
+    my $files = $self->{codeFiles};
+    my $codes = $self->{codefile};
+    while(my ($path, $f) = each %$files) {
+        print $f join "\n", @{$codes->{$path}};
+        close $f;
+    }
+    
+    
+	
 
 	# статья-файл
 	mkdir $`, 0744 while $self->{article_path} =~ m!/!g;
@@ -496,6 +484,19 @@ sub test {
 		switches => [ '-I' . $self->{libdir} ],
 	} );
 	
+    my $smap = $self->{map};
+    my $miu_path = $self->{path};    
+    
+    my $map = sub {
+        my ($s) = @_;
+        my $lineno;
+        $s =~ s{at (.*?) line (\d+)}{
+            if(exists $smap->{$1} and $lineno = $smap->{$1}[$2-1]) { "$& (AKA $lineno IN $miu_path)" }
+            else {$&}
+        }ge;
+        $s
+    };
+    
 	my $was_fail = 0; # сброс F
 	my @errors; # эксепшены
 	my @fail;	# непройденные тесты
@@ -513,7 +514,7 @@ sub test {
 		
 		if( $result->is_comment ) {
 			$first = 2 if !$first;
-			push @fail, $result->raw;
+			push @fail, $map->($result->raw);
 		} elsif(@fail) {
 			push @FAIL, [$current_line, join("\n", @fail)];
 			@fail = ();
@@ -522,7 +523,7 @@ sub test {
 		if( $result->is_unknown ) {
 		
 			if($result->raw !~ /^=/) {
-				push @errors, $result->raw;
+				push @errors, $map->($result->raw);
 				$first = 1 if !$first;
 				
 				if(!$was_fail) {
@@ -705,50 +706,39 @@ sub find {
 }
 
 
-# создаёт файл пакета и возвращает для записи
-sub packfile {
-	my ($self, $pack, $ipath) = @_;
-	
-	$pack =~ s!::!/!g;
-	
-	my $path = "$self->{libdir}/$pack.pm";
-	mkdir $` while $path =~ m!/!g;
-	
-	# код-файл
-	open my $codeFile, ">", $path or die "Не могу открыть файл кода $path: $!";
-	
-	print $codeFile "######### Файл создан автоматически miu из файла $ipath\n";
-	
-	$codeFile
+# очищает файловые списки
+sub clear {
+	my ($self) = @_;
+    
+    $self->{codeFiles} = {};
+    $self->{codePath} = undef;
+    $self->{codefile} = {};
+    $self->{map} = {};    
+	$self
 }
+
 
 # создаёт файл кода
 sub tocode {
 	my ($self, $path) = @_;
 
+    if($path !~ /^\.?\//) { $path = "$self->{libdir}/$path"; }
+    elsif($path =~ s!^./+!!) {}
+    
     my $codeFile = $self->{codeFiles}{$path};
-    $self->{codeFile} = $codeFile, return if $codeFile;
-    
-    my $realpath = $path;
-    
-    $path = "$self->{libdir}/$path" if $path !~ /^\.?\//;
-    
-    my $exists = -e $path;
-    my $codeFile;
-    if(!$exists) {
+    $self->{codePath} = $codeFile, return if $codeFile;
+     
+    if(!-e $path) {
         # создаём директории
         mkdir $` while $path =~ m!/!g;
-
-        # код-файл
-        open $codeFile, ">", $path or die "Не могу создать файл кода $path: $!";
-    } else {
-        open $codeFile, ">", $path or die "Не могу открыть файл кода $path: $!";
     }
     
-    $self->{codeFiles}{$realpath} = $self->{codeFile} = $codeFile;
-	$self->{codePath} = $realpath;
+    open my $codeFile, ">", $path or die "Не могу открыть файл кода $path: $!";
     
-    print $codeFile "######### Файл создан автоматически miu из файла $self->{path} (строка: $.)\n";
+    $self->{codeFiles}{$path} = $codeFile;
+	$self->{codePath} = $path;
+    
+    $self->println("######### Файл создан автоматически miu из файла $self->{path} (строка: $.)");
     
 	$self
 }
@@ -756,7 +746,7 @@ sub tocode {
 # переходим на тест
 sub totest {
 	my ($self) = @_;
-    $self->{codeFile} = undef;
+    $self->{codePath} = $self->{test_path};
 	$self
 }
 
@@ -767,29 +757,40 @@ sub toinit {
 	$self
 }
 
-# печатает в тест
-sub testln {
-	my ($self, $s) = @_;
-    
-	$self->{map_test}{$.} = @{$self->{testfile}};
-	push @{$self->{testfile}}, "$s\n";
-	
-	$self
-}
-
 # печатает в текущий файл кода
 sub println {
 	my ($self, $s) = @_;
     
 	my $path = $self->{codePath};
-	my $codefile = $self->{codefile}{$path} //= [];
-	
-	$self->{map}{$path}{$.} = @$codefile;
-	push @$codefile, "$s\n";
+    
+    die "println: нет пути файла" if !defined $path;
+    die "println: неожиданный перевод строки" if $s =~ /\n/;
+    
+	push @{$self->{codefile}{$path}}, $s;
+    
+    # маппинг строк файла в файле miu
+	push @{$self->{map}{$path}}, $.;
 	
 	$self
 }
 
+# добавляет заголовок теста
+sub unshift_test {
+	my ($self, $s) = @_;
+    
+    my @lines = split /\n/, $s;
+    unshift @{$self->{codefile}{$self->{test_path}}}, @lines;
+    
+    # меняем маппинг
+    my $map = $self->{map}{$self->{test_path}};
+    my $fill = $map->[0];
+    
+    unshift @$map, ($fill) x @lines;
+    
+ 
+    
+	$self
+}
 
 # переводит текст в bbcode
 sub markdown2bbcode {

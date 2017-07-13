@@ -141,6 +141,7 @@ sub A { print "A"; }
 
 use A::A;
 &A::A::A; #>> A
+&A::A::N; #>> N
 
 @@./.miu/test.pl
 
@@ -154,8 +155,8 @@ use A::A;
 
 ```perl
 
-require ".miu/test.pl"; #>> A
-`perl .miu/test.pl` # A
+require ".miu/test.pl"; #>> AN
+`perl .miu/test.pl` # AN
 
 ```
 
@@ -164,6 +165,25 @@ require ".miu/test.pl"; #>> A
 
 Ну или указывать абсолютные пути: `@@/path` или `./path`.
 
+Тест выполняется после того, как сформированы все файлы из него. Поэтому можно дописывать файлы
+
+```perl
+@@A/A.pm
+
+
+sub N { print "N"; }
+
+1;
+
+@@./.miu/test.pl
+
+&A::A::N;
+
+1;
+
+
+
+```
 
 ## Как выполнить тесты из раздела статьи
 

@@ -725,8 +725,7 @@ sub tocode {
     if($path !~ /^\.?\//) { $path = "$self->{libdir}/$path"; }
     elsif($path =~ s!^./+!!) {}
     
-    my $codeFile = $self->{codeFiles}{$path};
-    $self->{codePath} = $codeFile, return if $codeFile;
+    $self->{codePath} = $path, return if exists $self->{codefile}{$path};
      
     if(!-e $path) {
         # создаём директории

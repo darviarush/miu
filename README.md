@@ -155,7 +155,7 @@ use A::A;
 
 ```perl
 
-require ".miu/test.pl"; #>> AN
+require "./.miu/test.pl"; #>> AN
 `perl .miu/test.pl` # AN
 
 ```

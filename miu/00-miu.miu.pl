@@ -106,8 +106,8 @@ miu считает любой текст примыкающий к началу 
 	
 **[test]**
 [test]
-
-	require ".miu/test.pl"; #>> AN
+	
+	require "./.miu/test.pl"; #>> AN
 	`perl .miu/test.pl` # AN
 
 Изменить путь к каталогу **lib** можно ключём `-u path/to/mylib`.  

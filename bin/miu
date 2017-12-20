@@ -9,44 +9,12 @@
 # todo: http://pandoc.org/demos.html
 
 use common::sense;
-use Getopt::Long qw/:config no_ignore_case bundling/;
-
-
-my %opt = (
-	output => ".miu",
-	libdir => ".miu/lib",
-	bindir => ".miu",
-);
-
-GetOptions(
-	#"p|public" => \$opt{public},
-	"a|article" => \$opt{article_only},
-	"t|test" => \$opt{test},
-	"i|inspect:s" => \$opt{inspect},
-	"l|log" => \$opt{log},
-	"s|stat" => \$opt{stat},
-	"o|outdir=s" => \$opt{output},
-	"u|libdir=s" => \$opt{libdir},
-	"b|bindir=s" => \$opt{bindir},
-	"h|help" => \$opt{help},
-);
-
-# маска файлов, маска заголовков
-$opt{pattern} = [ split /:/, shift @ARGV ];
-$opt{art_pattern} = [@ARGV];
-
-utf8::decode($_) for @{$opt{pattern}};
-utf8::decode($_) for @{$opt{art_pattern}};
-
-eval {
-	require "Text/Markdown.pm";
-};
-
 use Cwd 'abs_path';
+
 my $f = abs_path(__FILE__);
-$f =~ s!/bin/miu$!/lib/RrruMiu.pm!;
+$f =~ s!/bin/miu$!/lib!;
+push @INC, $f;
 
-require $f;
+require "RrruMiu.pm";
 
-my $miu = RrruMiu->new(\%opt);
-$miu->run;
+my $miu = RrruMiu->new->parse->run;

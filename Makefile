@@ -11,9 +11,9 @@ remote:
 		git remote add github git@github.com:darviarush/miu.git
 
 README.md: miu/00-miu.miu.pl
-		(cd miu && miu 00 && cp .miu/00-miu.markdown ../README.md)
+		(cd miu && miu 00:10 && cp .miu/00-miu.markdown ../README.md)
 
-dist: README.md
+dist: README.md cpan
 		git add .
 		git commit
 		git push origin master
@@ -23,4 +23,15 @@ clean:
 		rm -r README.md miu/.miu/
 
 test:
+		cd miu && miu 00:10
+		
+pl:
 		cd miu && miu 00
+		
+js:
+		cd miu && miu 10
+
+		
+cpan:
+		perl gencpanfile.pl > cpanfile
+		

@@ -4,10 +4,58 @@ package RrruMiu;
 use common::sense;
 use File::Find qw//;
 
+use EssentialMiu;
+
+msg1(":green", "✓·×");
+
 # конструктор
 sub new {
-	my ($cls, $opt) = @_;
-	bless {%$opt}, $cls
+	my $cls = shift;
+	bless {
+		@_,
+		lang => {},			# драйверы языков программирования
+	}, $cls
+}
+
+# парсит параметры командной строки
+sub parse {
+	my $self = shift;
+
+	use Getopt::Long qw/:config no_ignore_case bundling/;
+
+	my %opt = (
+		output => ".miu",
+		libdir => ".miu/lib",
+		bindir => ".miu",
+	);
+
+	GetOptions(
+		#"p|public" => \$opt{public},
+		"a|article" => \$opt{article_only},
+		"t|test" => \$opt{test},
+		"i|inspect:s" => \$opt{inspect},
+		"l|log" => \$opt{log},
+		"s|stat" => \$opt{stat},
+		"o|outdir=s" => \$opt{output},
+		"u|libdir=s" => \$opt{libdir},
+		"b|bindir=s" => \$opt{bindir},
+		"h|help" => \$opt{help},
+	);
+
+	# маска файлов, маска заголовков
+	$opt{pattern} = [ split /:/, shift @ARGV ];
+	$opt{art_pattern} = [@ARGV];
+
+	utf8::decode($_) for @{$opt{pattern}};
+	utf8::decode($_) for @{$opt{art_pattern}};
+
+	eval {
+		require "Text/Markdown.pm";
+	};
+	
+	%$self = (%opt, %$self);
+	
+	return $self;
 }
 
 # парсит и запускает тесты
@@ -15,7 +63,6 @@ sub run {
 	my ($self) = @_;	
 	
 	if($self->{help}) {
-# -p, --public       опубликовать в интернте, см. etc/miu.sample.ini
 		print "[rrru]miu [опции] [маски_файлов] [маска_разделов]...
 
 rrrumiu компилирует файлы в код, тесты и статьи. Выполняет тесты
@@ -101,6 +148,8 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 			
 		}
 		
+		$self->clear;
+		
 	});
 	
 	print "Не найдено ни одного теста\n" if $self->{count_tests} == 0;
@@ -116,8 +165,8 @@ sub compile {
 	my $path = $self->{path};
 	open my $file, "<:encoding(utf8)", $path or die "Не могу открыть файл miu $path: $!";
 		
-    # чистим переменные
-    $self->clear->totest;
+    # переходим на тест
+    $self->totest;
         
 	# подготавливаем разбитие по разделам статьи
 	my @art_pattern = @{$self->{art_pattern}};
@@ -130,13 +179,13 @@ sub compile {
 	my @article;
 	my $count_tests = 0;
 	my $lines = $self->{lines} = [1];
-	my $start_code = "\n```perl\n";
+	my $start_code = "\n```%s\n";
 	my $start_path_name = "";
 	my $end_code = "```\n\n";
 	
 	while(<$file>) {
 		
-		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest, next if /^\[test\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), next if /^\[test(?:[\t ]+(\w+))?\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
         ($init, $thisIsCode, $thisIsTest) = (0,1,0), ($thisIsArticle? $start_path_name = "\@\@$1\n": push @article, "\@\@$1\n"), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
         
@@ -147,10 +196,14 @@ sub compile {
 		my $len_last = length($1) + length $2;
 	
 		if($thisIsHeader && $test_write) {
-			my $text = ("=" x length $1) . $2 . $';
-            $text =~ s/\s+$//g;
-			$text =~ s/'/\\'/g;
-			$self->println("print STDERR '$text' . \"\\n\";");
+			my $level = length $1;
+			my $text = $';
+			my $header = $text;
+			$header =~ s/\s+$//g;
+			$header = ("=" x $level) . " " . $header;
+			$header = $self->{codeFile}->string($header);
+			
+			$self->{codeFile}->header($header, $level, $text);
 		}
 	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
@@ -158,7 +211,7 @@ sub compile {
 				my $i;
 				for($i=$#article; $i>=0 && $article[$i] =~ /^\s*$/; $i--) {
 				}
-				splice @article, $i+1, 0, $start_code, $start_path_name;
+				splice @article, $i+1, 0, sprintf($start_code, $self->{codeFile}->name), $start_path_name;
 				$start_path_name = "";
 			}
 			$thisIsArticle = 0;
@@ -194,14 +247,19 @@ sub compile {
 		
 			###################### [code]
 			if($thisIsCode) {
-                $self->println($_);
+                $self->{codeFile}->println($_);
 			}
 			
 			###################### [test]
 			elsif($thisIsTest && ($test_write || $init)) {
-				
-				my $replace = sub {
-					$count_tests ++;
+								
+				my $oper = "gt|lt|ne|eq|le|ge|==|!=|>|<|<=|>=|~|!~|startswith|endswith";
+				my $comment = $self->{codeFile}->comment;	# возвращает # для perl или // для js
+				if(/^\s*#/) {
+					$self->{codeFile}->println($_);
+				}
+				elsif( /^\s*(.*?);*[ \t]+$comment(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/ ) {
+					$self->{codeFile}->count_tests(++$count_tests);
 					
 					push @$lines, $.;
 					
@@ -214,17 +272,14 @@ sub compile {
 					if(!$code) {
 					
 						if($op eq "~" or $op eq "!~") {
-							$end = "qr{$end}";
+							$end = $self->{codeFile}->regexp($end);
 						} else {
-							$end =~ s/["\@\$]/\\$&/g;
-							$end =~ s/\\s/ /g;
-							$end = "\"$end\"";
+							$end = $self->{codeFile}->string($end);
 						}
 						
 					}
 					else {
-						$end =~ s/;$//;
-						$end = "scalar($end)";
+						$end = $self->{codeFile}->scalar($end)
 					}
 					
 					
@@ -238,54 +293,49 @@ sub compile {
 						# $start = "___get()";
 					# }
 					if($who eq ">>") {	    #STDOUT
-                        $begin = "___std(\\*STDOUT); $start; ___res(\\*STDOUT); ";
-						$start = "___get()";
+                        ($begin, $start) = $self->{codeFile}->stdout($start);
 					}
 					elsif($who eq "&>") {	#STDERR
-                        $begin = "___std(\\*STDERR); $start; ___res(\\*STDERR); ";
-						$start = "___get()";
+						($begin, $start) = $self->{codeFile}->stderr($start);
 					}
 					elsif($who eq "\@") {
-                        $begin = "eval { $start }; ";
-						$start = "\$@";
+						($begin, $start) = $self->{codeFile}->catch($start);
 					}
 					elsif($who eq "!") {
-                        $begin = "$start; ";
-						$start = "\$!";
+						($begin, $start) = $self->{codeFile}->retcode($start);
 					}
 					
-					$start = "scalar($start)";
+					$start = $self->{codeFile}->scalar($start);
 
 					my $desc = $_;
-					$desc =~ s/\s*$//;
-					$desc =~ s/'/\\'/g;
-					$desc = "'$desc'";
+					$desc =~ s/\\[nrt]/\\$&/g;
+					$desc = $self->{codeFile}->string($desc);
 					
-                    $begin . do {
-                        if(!$op && !$code) {
-                            "is( $start, $end, $desc );";
-                        } elsif(!$op) {
-                            "is_deeply( $start, $end, $desc );";
-                        } elsif($op eq "startswith") {
-                            "is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
-                        } elsif($op eq "endswith") {
-                            "is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
-                        } elsif($op eq "~") {
-                            "like( $start, $end, $desc );"
-                        } elsif($op eq "!~") {
-                            "unlike( $start, $end, $desc );"
-                        } else {
-                            "cmp_ok( $start, '$op', $end, $desc );";
-                        }
-                    };
-					
-				};
+					$self->{codeFile}->println(
+						$begin . do {
+							if(!$op && !$code) {
+								$self->{codeFile}->is($start, $end, $desc);
+							} elsif(!$op) {
+								$self->{codeFile}->is_deeply($start, $end, $desc);
+							} elsif($op eq "startswith") {
+								$self->{codeFile}->startswith($start, $end, $desc);
+							} elsif($op eq "endswith") {
+								$self->{codeFile}->endswith($start, $end, $desc);
+							} elsif($op eq "~") {
+								$self->{codeFile}->like($start, $end, $desc);
+							} elsif($op eq "!~") {
+								$self->{codeFile}->unlike($start, $end, $desc);
+							} else {
+								$self->{codeFile}->cmp_ok($start, $op, $end, $desc);
+							}
+						}
+					);
+				}
+				else {
+					$self->{codeFile}->println($_);
+				}
 				
-				my $oper = "gt|lt|ne|eq|le|ge|==|!=|>|<|<=|>=|~|!~|startswith|endswith";
-				if(/^\s*#/) {}
-				elsif( s/^\s*(.*?);*[ \t]+#(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/$replace->()/eo ) {}
-				
-                $self->println($_);
+                
                 
 			}
 			
@@ -294,61 +344,11 @@ sub compile {
 	}
 		
 
-    # дополняем тест
-	my $output = $self->{output};
-	$output =~ s![\"]!\\$&!g;
-	
-	$self->unshift_test('#!/usr/bin/env perl
-# сгенерировано miu
-
-use utf8;
-	
-use open ":std", ":encoding(utf8)";
-use Test::More tests => ' . $count_tests . ';
-
-my ($_f, $_ret);
-
-sub ___std {
-my $fh = shift;
-open $_f, ">&", $fh; close $fh; open $fh, ">", "' . $output . '/miu-tmp-fh";
-}
-
-sub ___res {
-my $fh = shift;
-close $fh;
-open $fh, ">&", $_f;
-}
-
-sub ___get {
-open my $f, "' . $output . '/miu-tmp-fh";
-read $f, my $buf, -s $f;
-close $f;
-$buf
-}
-
-');
-
-        
-        
 	close $file;    # закрываем файл miu
 	
-  	# создаём тест-файл
-	mkdir $`, 0744 while $self->{test_path} =~ m!/!g;
-	open my $testFile, ">:encoding(utf8)", $self->{test_path} or die "Не могу записать файл теста $self->{test_path}: $!";
-    $self->{codeFiles}{$self->{test_path}} = $testFile;
-
+    # заполняем файлы кода и тестов, очищаем codeFile и codeFiles
+    $self->save(count_tests => $count_tests, output => $self->{output});
     
-    # заполняем файлы кода
-    my $files = $self->{codeFiles};
-    my $codes = $self->{codefile};
-    while(my ($path, $f) = each %$files) {
-        print $f join "\n", @{$codes->{$path}};
-        close $f;
-    }
-    
-    
-	
-
 	# статья-файл
 	mkdir $`, 0744 while $self->{article_path} =~ m!/!g;
 	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу записать файл статьи $self->{article_path}: $!";
@@ -362,7 +362,7 @@ $buf
 		my @code;
 		my $thisIsCode;
 		for my $line (@article) {
-			if($line eq $start_code) {
+			if($line =~ /\n```[a-z]\w*\n\n/i) {
 				$thisIsCode = 1;
 				next;
 			}
@@ -423,208 +423,199 @@ use TAP::Parser;
 sub test {
 	my ($self) = @_;
 	
-	my $path = $self->{test_path};
+	my @codeFiles = sort { $a->name cmp $b->name } values %{$self->{codeFiles}};
 	
-	#for my $path (@{$self->{test_path}}) {
-	#print "$path ";
+	for my $codeFile (@codeFiles) {
+		next if $codeFile->{is_file_code};
+		my $path = $codeFile->{path};
 	
-	my $log_path = $path;
-	$log_path =~ s!\.\w+$!.log!;
-	open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
-	
-	my $stat_path = $path;
-	$stat_path =~ s!\.\w+$!.stat!;
-	open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
-	
-	my $parser = TAP::Parser->new( {
-		source => $path,
-		merge => 1,
-		switches => [ '-I' . $self->{libdir} ],
-	} );
-	
-    my $smap = $self->{map};
-    my $miu_path = $self->{path};    
-    
-    my $map = sub {
-        my ($s) = @_;
-        my $lineno;
-        #print "`$s`\n\n";
-        #print m{at (.*?) line (\d+)}."==\n";
-        my $run = sub {
-            print "at $1 line $2\n";
-            if(exists $smap->{$1} and $lineno = $smap->{$1}[$2-1]) { "$& (AKA $lineno IN $miu_path)" }
-            else {$&}
-        };
-        $s =~ s{at (.*?) line (\d+)}{$run->()}ge;
-        
-        $s
-    };
-    
-	my $was_fail = 0; # сброс F
-	my @errors; # эксепшены
-	my @fail;	# непройденные тесты
-	my @FAIL;
-	my @ERRORS;
-	my $first;	# первый фейл или ошибка
-	my $count_ok = 0; # количество пройденных тестов
-	my ($count_pass, $count_tests);	# количество файлов-тестов (1) и количество всех тестов
-	my $current_test;
-	my $current_line = 0;
-	
-	while ( my $result = $parser->next ) {
+		my $log_path = $path;
+		$log_path =~ s!\.t(\.\w+)?$!$1.log!;
+		open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
 		
-		######### логика
+		my $stat_path = $path;
+		$stat_path =~ s!\.t(\.\w+)?$!$1.stat!;
+		open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
+
+	
+		my $parser = TAP::Parser->new( {
+			#source => $path,
+			merge => 1,
+			#switches => [ '-I' . $self->{libdir} ],
+			exec => $codeFile->exec($self),
+		} );
 		
-		if( $result->is_comment ) {
-			$first = 2 if !$first;
-			push @fail, $result->raw;
-		} elsif(@fail) {
-			push @FAIL, [$current_line, join("\n", @fail)];
-			@fail = ();
-		}
+		my $map = sub {
+			my ($s) = @_;
+			$codeFile->mapiferror($s, $self);
+		};
 		
-		if( $result->is_unknown ) {
+		my $was_fail = 0; # сброс F
+		my @errors; # эксепшены
+		my @fail;	# непройденные тесты
+		my @FAIL;
+		my @ERRORS;
+		my $first;	# первый фейл или ошибка
+		my $count_ok = 0; # количество пройденных тестов
+		my ($count_pass, $count_tests);	# количество файлов-тестов (1) и количество всех тестов
+		my $current_test;
+		my $current_line = 0;
 		
-			if($result->raw !~ /^=/) {
-				push @errors, $result->raw;
-				$first = 1 if !$first;
-				
-				if(!$was_fail) {
-					print "F" if !$self->{log};
-					$was_fail = 1;
+		while ( my $result = $parser->next ) {
+			
+			######### логика
+			
+			if( $result->is_comment ) {
+				$first = 2 if !$first;
+				push @fail, $result->raw;
+			} elsif(@fail) {
+				push @FAIL, [$current_line, join("\n", @fail)];
+				@fail = ();
+			}
+			
+			if( $result->is_unknown ) {
+			
+				if($result->raw !~ /^=/) {
+					push @errors, $result->raw;
+					$first = 1 if !$first;
+					
+					if(!$was_fail) {
+						print colored("F", "cyan") if !$self->{log};
+						$was_fail = 1;
+					}
 				}
-			}
-		} else {
-			$was_fail = 0;
-			
-			if(@errors) {
-				push @ERRORS, [$current_line, join("\n", @errors)];
-				@errors = ();
-			}
-			
-		}
-
-		if( $result->is_plan ) {
-			($count_pass, $count_tests) = split /\.\./, $result->raw;
-		}
-		
-		
-		if( $result->is_test ) {
-			if( $result->is_ok ) {
-				print "." if !$self->{log};
-				$count_ok++;
 			} else {
-				print "E" if !$self->{log};
+				$was_fail = 0;
+				
+				if(@errors) {
+					push @ERRORS, [$current_line, join("\n", @errors)];
+					@errors = ();
+				}
+				
+			}
+
+			if( $result->is_plan ) {
+				($count_pass, $count_tests) = split /\.\./, $result->raw;
 			}
 			
-			($current_test) = $result->raw =~ /(\d+)/;
 			
-			$current_line = $self->{lines}[$current_test];
+			if( $result->is_test ) {
+				if( $result->is_ok ) {
+					print "." if !$self->{log};
+					$count_ok++;
+				} else {
+					print colored("E", "red") if !$self->{log};
+				}
+				
+				($current_test) = $result->raw =~ /(\d+)/;
+				
+				$current_line = $self->{lines}[$current_test];
+				
+				
+				print "$current_line: " if $self->{log};
+			}
 			
 			
-			print "$current_line: " if $self->{log};
-		}
+			######### статистика
+			my @stat;
+			
+			if( $result->is_plan ) {
+				push @stat, "is_plan ";
+			}
+			if( $result->is_pragma ) {
+				push @stat, "is_pragma ";
+			}
+			if( $result->is_test ) {
+				push @stat, "is_test ";
+			}
+			if( $result->is_comment ) {
+				push @stat, "is_comment ";
+			}
+			if( $result->is_bailout ) {
+				push @stat, "is_bailout ";
+			}
+			if( $result->is_version ) {
+				push @stat, "is_version ";
+			}
+			if( $result->is_unknown ) {
+				push @stat, "is_unknown ";
+			}
+			if( $result->is_yaml ) {
+				push @stat, "is_yaml ";
+			}
+			if( $result->has_directive ) {
+				push @stat, "has_directive ";
+			}
+			if( $result->has_todo ) {
+				push @stat, "has_todo ";
+			}
+			if( $result->has_skip ) {
+				push @stat, "has_skip ";
+			}
 		
-		
-		######### статистика
-		my @stat;
-		
-		if( $result->is_plan ) {
-			push @stat, "is_plan ";
-		}
-		if( $result->is_pragma ) {
-			push @stat, "is_pragma ";
-		}
-		if( $result->is_test ) {
-			push @stat, "is_test ";
-		}
-		if( $result->is_comment ) {
-			push @stat, "is_comment ";
-		}
-		if( $result->is_bailout ) {
-			push @stat, "is_bailout ";
-		}
-		if( $result->is_version ) {
-			push @stat, "is_version ";
-		}
-		if( $result->is_unknown ) {
-			push @stat, "is_unknown ";
-		}
-		if( $result->is_yaml ) {
-			push @stat, "is_yaml ";
-		}
-		if( $result->has_directive ) {
-			push @stat, "has_directive ";
-		}
-		if( $result->has_todo ) {
-			push @stat, "has_todo ";
-		}
-		if( $result->has_skip ) {
-			push @stat, "has_skip ";
-		}
-	
-		# по логам
-		print $stat @stat if @stat;
-		print $stat $result->as_string . "\n";
-		print $log $result->as_string . "\n";
-		
-		print @stat if $self->{stat};
-		print $map->($result->as_string) . "\n" if $self->{log};
-	} 
+			# по логам
+			print $stat @stat if @stat;
+			print $stat $result->as_string . "\n";
+			print $log $result->as_string . "\n";
+			
+			print @stat if $self->{stat};
+			print $map->($result->as_string) . "\n" if $self->{log};
 
-	push @FAIL, [$current_line, join("\n", @fail)] if @fail;
-	push @ERRORS, [$current_line, join("\n", @errors)] if @errors;
-	
-	close $log;
-	close $stat;
-
-	if($count_ok == $count_tests) {
-		print " ok\n";
-	}
-	else {
-		print " fail\n";
-	}
-	
-	
-	
-	######### сохраняем фейлы и ошибки
-	$self->{fail} = [@FAIL];
-	$self->{errors} = [@ERRORS];
-	
-	#use Data::Dumper; print Dumper(\@FAIL, \@ERRORS);
-	
-	######### первая ошибка
-	if(@ERRORS) {
-		$_ = $ERRORS[0][1];
-		if( m!\bat (.*?) line (\d+)\.! ) {
-			$self->{first_error} = $` . $&;
-		} else {
-			$self->{first_error} = $_;
-		}
-	}
-	
-	######### обрезаем последнюю строку со статусом
-	if(@FAIL) {
-		@fail = split /\n/, $FAIL[$#FAIL][1];
-		$self->{test_status} = pop @fail;
-		$FAIL[$#FAIL][1] = join "\n", @fail;
-		pop @FAIL if $FAIL[$#FAIL][1] eq "";
-	}
-	
-	if(!$self->{log}) {
-		if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
-			print $map->($self->{first_error});
-			print "\nпосле строки № $ERRORS[0][0]\n";
-		}
-		
-		if(@FAIL) {	# (@FAIL && $first == 2)
-			print $map->($FAIL[0][1]);
-			print "\nна строке № $FAIL[0][0]\n";
 		}
 
+		push @FAIL, [$current_line, join("\n", @fail)] if @fail;
+		push @ERRORS, [$current_line, join("\n", @errors)] if @errors;
+		
+		close $log;
+		close $stat;
+
+		if($count_ok == $count_tests && $count_tests != 0) {
+			print colored(" ok\n", "black", "bold");
+		}
+		else {
+			print colored(" fail\n", "red");
+		}
+		
+		
+		
+		######### сохраняем фейлы и ошибки
+		$self->{fail} = [@FAIL];
+		$self->{errors} = [@ERRORS];
+		
+		#use Data::Dumper; print Dumper(\@FAIL, \@ERRORS);
+		
+		######### первая ошибка
+		if(@ERRORS) {
+			$_ = $ERRORS[0][1];
+			if( m!\bat (.*?) line (\d+)\.! ) {
+				$self->{first_error} = $` . $&;
+			} else {
+				$self->{first_error} = $_;
+			}
+		}
+		
+		######### обрезаем последнюю строку со статусом
+		if(@FAIL) {
+			@fail = split /\n/, $FAIL[$#FAIL][1];
+			$self->{test_status} = pop @fail;
+			$FAIL[$#FAIL][1] = join "\n", @fail;
+			pop @FAIL if $FAIL[$#FAIL][1] eq "";
+		}
+		
+		if(!$self->{log}) {
+			if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
+				print $map->($self->{first_error});
+				print "\nпосле строки № $ERRORS[0][0]\n";
+			}
+			
+			if(@FAIL) {	# (@FAIL && $first == 2)
+				print $map->($FAIL[0][1]);
+				print "\nна строке № $FAIL[0][0]\n";
+			}
+		}
+		return if $count_ok != $count_tests;
 	}
-	
-	$count_ok == $count_tests;
+	return 1;
 }
 
 
@@ -668,47 +659,70 @@ sub find {
 	$self
 }
 
+# сохраняет файлы тестов
+sub save {
+	my $self = shift;
+	
+	local $_;
+	
+	# use Data::Dumper;
+	# print STDERR Dumper($self->{codeFiles});
+	
+	my @codeFiles = values %{$self->{codeFiles}};
+	for my $f (@codeFiles) {
+		delete($self->{codeFiles}{$f->{path}}), next if !$f->{is_file_code} && $f->lines == 0;
+		$f->options(@_)->save;
+	}
 
-# очищает файловые списки
-sub clear {
-	my ($self) = @_;
-    
-    $self->{codeFiles} = {};
-    $self->{codePath} = undef;
-    $self->{codefile} = {};
-    $self->{map} = {};    
 	$self
 }
 
+# очищает файловые списки
+sub clear {
+	my $self = shift;
+	
+	$self->{codeFiles} = {};
+	$self->{codeFile} = undef;
+	
+	$self
+}
 
-# создаёт файл кода
+# возвращает драйвер языка
+sub drv {
+	my ($self, $lang) = @_;
+	
+	my $a = "Miu" . ucfirst($lang);
+	require "$a.pm";
+	
+	$a
+}
+
+# переходим на файл кода
 sub tocode {
 	my ($self, $path) = @_;
 
     if($path !~ /^\.?\//) { $path = "$self->{libdir}/$path"; }
     elsif($path =~ s!^./+!!) {}
-    
-    $self->{codePath} = $path, return if exists $self->{codefile}{$path};
-     
-    if(!-e $path) {
-        # создаём директории
-        mkdir $` while $path =~ m!/!g;
-    }
-    
-    open my $codeFile, ">", $path or die "Не могу открыть файл кода $path: $!";
-    
-    $self->{codeFiles}{$path} = $codeFile;
-	$self->{codePath} = $path;
-    
-    $self->println("######### Файл создан автоматически miu из файла $self->{path} (строка: $.)");
+	
+	$self->{codeFile} = $self->{codeFiles}{$path} //= $self->drv("file")->new(path => $path, is_file_code=>1);
+	
+	#my $comment = $self->{defaultComment} // "#";
+	#$comment = $comment x 9;
+    #$self->{codeFile}->println("$comment Файл создан автоматически miu из файла $self->{path} (строка: $.)");
     
 	$self
 }
 
 # переходим на тест
 sub totest {
-	my ($self) = @_;
-    $self->{codePath} = $self->{test_path};
+	my ($self, $lang) = @_;
+	$self->{codeLang} = $lang //= $self->{codeLang} // "perl";
+
+	my $drv = $self->drv($lang);
+	my $path = $self->{test_path} . $drv->test_ext;
+	
+	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path);
+	
 	$self
 }
 
@@ -719,40 +733,7 @@ sub toinit {
 	$self
 }
 
-# печатает в текущий файл кода
-sub println {
-	my ($self, $s) = @_;
-    
-	my $path = $self->{codePath};
-    
-    die "println: нет пути файла" if !defined $path;
-    die "println: неожиданный перевод строки" if $s =~ /\n/;
-    
-	push @{$self->{codefile}{$path}}, $s;
-    
-    # маппинг строк файла в файле miu
-	push @{$self->{map}{$path}}, $.;
-	
-	$self
-}
 
-# добавляет заголовок теста
-sub unshift_test {
-	my ($self, $s) = @_;
-    
-    my @lines = split /\n/, $s;
-    unshift @{$self->{codefile}{$self->{test_path}}}, @lines;
-    
-    # меняем маппинг
-    my $map = $self->{map}{$self->{test_path}};
-    my $fill = $map->[0];
-    
-    unshift @$map, ($fill) x @lines;
-    
- 
-    
-	$self
-}
 
 # переводит текст в bbcode
 sub markdown2bbcode {

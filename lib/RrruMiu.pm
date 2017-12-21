@@ -6,7 +6,12 @@ use File::Find qw//;
 
 use EssentialMiu;
 
-msg1(":green", "✓·×");
+BEGIN {
+	select(STDERR);	$| = 1;
+	select(STDOUT); $| = 1; # default
+}
+
+#msg1(":green", "✓·×");
 
 # конструктор
 sub new {
@@ -39,6 +44,7 @@ sub parse {
 		"o|outdir=s" => \$opt{output},
 		"u|libdir=s" => \$opt{libdir},
 		"b|bindir=s" => \$opt{bindir},
+		"c|uncolor" => \$opt{uncolor},
 		"h|help" => \$opt{help},
 	);
 
@@ -78,6 +84,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -o, --outdir=dir      директория для скомпиллированных файлов
     -u, --libdir=dir      директория для пакетов perl
     -b, --bindir=dir      директория для файлов кода
+    -c, --uncolor         отключить цвет
     -h, --help            эта справка
 ";
 		exit;
@@ -89,7 +96,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 	$self->{input} =~ s!/$!!;
 	$self->{output} =~ s!/$!!;	
 	
-	$self->{log} = 1 if $self->{stat};
+	#$self->{log} = 1 if $self->{stat};
 	
 	my $count = 0;
 	
@@ -415,18 +422,16 @@ sub compile {
 }
 
 
-
-
 # тестирует указанные тесты
 # возвращает 1/0 - тест прошёл-не прошёл и выводит в лог
-use TAP::Parser;
 sub test {
 	my ($self) = @_;
 	
-	my @codeFiles = sort { $a->name cmp $b->name } values %{$self->{codeFiles}};
+	local $_;
 	
-	for my $codeFile (@codeFiles) {
-		next if $codeFile->{is_file_code};
+	my @tests = sort { $a->name cmp $b->name } grep {!$_->{is_file_code}} values %{$self->{codeFiles}};
+
+	for my $codeFile (@tests) {
 		my $path = $codeFile->{path};
 	
 		my $log_path = $path;
@@ -436,183 +441,123 @@ sub test {
 		my $stat_path = $path;
 		$stat_path =~ s!\.t(\.\w+)?$!$1.stat!;
 		open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
-
-	
-		my $parser = TAP::Parser->new( {
-			#source => $path,
-			merge => 1,
-			#switches => [ '-I' . $self->{libdir} ],
-			exec => $codeFile->exec($self),
-		} );
 		
-		my $map = sub {
-			my ($s) = @_;
-			$codeFile->mapiferror($s, $self);
-		};
 		
-		my $was_fail = 0; # сброс F
-		my @errors; # эксепшены
-		my @fail;	# непройденные тесты
-		my @FAIL;
-		my @ERRORS;
-		my $first;	# первый фейл или ошибка
-		my $count_ok = 0; # количество пройденных тестов
-		my ($count_pass, $count_tests);	# количество файлов-тестов (1) и количество всех тестов
 		my $current_test;
-		my $current_line = 0;
+		my $current_line;
+		my $count_ok;
+		my $count_fail;
+		my $count_tests = $codeFile->{count_tests};
 		
-		while ( my $result = $parser->next ) {
+		use Reporter::MiuDot;
+		my $reporter = Reporter::MiuDot->new(
+			uncolor=>$self->{uncolor}, 
+			count_tests=>$count_tests,
+		);
+		print $reporter->start;
+		
+		my $parseLine = sub {
+			my ($s, $stderr) = @_;
 			
 			######### логика
 			
-			if( $result->is_comment ) {
-				$first = 2 if !$first;
-				push @fail, $result->raw;
-			} elsif(@fail) {
-				push @FAIL, [$current_line, join("\n", @fail)];
-				@fail = ();
-			}
-			
-			if( $result->is_unknown ) {
-			
-				if($result->raw !~ /^=/) {
-					push @errors, $result->raw;
-					$first = 1 if !$first;
-					
-					if(!$was_fail) {
-						print colored("F", "cyan") if !$self->{log};
-						$was_fail = 1;
-					}
-				}
-			} else {
-				$was_fail = 0;
-				
-				if(@errors) {
-					push @ERRORS, [$current_line, join("\n", @errors)];
-					@errors = ();
-				}
-				
-			}
-
-			if( $result->is_plan ) {
-				($count_pass, $count_tests) = split /\.\./, $result->raw;
-			}
-			
+			my $result = $codeFile->parse($s, $stderr);
 			
 			if( $result->is_test ) {
-				if( $result->is_ok ) {
-					print "." if !$self->{log};
-					$count_ok++;
-				} else {
-					print colored("E", "red") if !$self->{log};
-				}
-				
-				($current_test) = $result->raw =~ /(\d+)/;
-				
+				$current_test = $result->num;
 				$current_line = $self->{lines}[$current_test];
-				
-				
-				print "$current_line: " if $self->{log};
+				print "$current_line: " if $self->{log} || $self->{stat};
 			}
 			
+			my $out = $reporter->report($result, $current_line);
+			print $out if !$self->{log} && !$self->{stat};
 			
-			######### статистика
-			my @stat;
+			$count_ok++ if $result->is_ok;
+			$count_fail++ if $result->is_fail;
 			
-			if( $result->is_plan ) {
-				push @stat, "is_plan ";
-			}
-			if( $result->is_pragma ) {
-				push @stat, "is_pragma ";
-			}
-			if( $result->is_test ) {
-				push @stat, "is_test ";
-			}
-			if( $result->is_comment ) {
-				push @stat, "is_comment ";
-			}
-			if( $result->is_bailout ) {
-				push @stat, "is_bailout ";
-			}
-			if( $result->is_version ) {
-				push @stat, "is_version ";
-			}
-			if( $result->is_unknown ) {
-				push @stat, "is_unknown ";
-			}
-			if( $result->is_yaml ) {
-				push @stat, "is_yaml ";
-			}
-			if( $result->has_directive ) {
-				push @stat, "has_directive ";
-			}
-			if( $result->has_todo ) {
-				push @stat, "has_todo ";
-			}
-			if( $result->has_skip ) {
-				push @stat, "has_skip ";
-			}
-		
+			
 			# по логам
-			print $stat @stat if @stat;
-			print $stat $result->as_string . "\n";
-			print $log $result->as_string . "\n";
+			print $stat "$result->{type} $s\n";
+			print $log "$s\n";
 			
-			print @stat if $self->{stat};
-			print $map->($result->as_string) . "\n" if $self->{log};
-
-		}
-
-		push @FAIL, [$current_line, join("\n", @fail)] if @fail;
-		push @ERRORS, [$current_line, join("\n", @errors)] if @errors;
+			print(($self->{uncolor}? $result->{type}: colored($result->{type}, "cyan")) . " $s\n") if $self->{stat};
+			print $codeFile->mapiferror($s, $self) . "\n" if $self->{log};
+		};
+		
+		my $stdout = [];
+		my $stderr = [];
+		my $cb = sub {
+			my ($chunk, $std) = @_;
+			while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
+				push @$std, $1;
+				$parseLine->(join("", @$std), $std == $stderr);
+				@$std = ();
+			}
+			push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
+		};
+		
+		#use IPC::Open3::Simple;
+		
+		$Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
+		
+		use IPC::Open3::Callback;
+		my $ipc = IPC::Open3::Callback->new({
+			out_callback => sub { $cb->($_[0], $stdout) }, 
+			err_callback => sub { $cb->($_[0], $stderr) }
+		});
+		$ipc->run_command($codeFile->exec($self));
+		
+		
+		# push @FAIL, [$current_line, join("\n", @fail)] if @fail;
+		# push @ERRORS, [$current_line, join("\n", @errors)] if @errors;
 		
 		close $log;
 		close $stat;
 
 		if($count_ok == $count_tests && $count_tests != 0) {
-			print colored(" ok\n", "black", "bold");
+			print $reporter->ok;
 		}
 		else {
-			print colored(" fail\n", "red");
+			print $reporter->fail($count_ok, $count_fail);
 		}
 		
 		
 		
 		######### сохраняем фейлы и ошибки
-		$self->{fail} = [@FAIL];
-		$self->{errors} = [@ERRORS];
+		# $self->{fail} = [@FAIL];
+		# $self->{errors} = [@ERRORS];
 		
 		#use Data::Dumper; print Dumper(\@FAIL, \@ERRORS);
 		
 		######### первая ошибка
-		if(@ERRORS) {
-			$_ = $ERRORS[0][1];
-			if( m!\bat (.*?) line (\d+)\.! ) {
-				$self->{first_error} = $` . $&;
-			} else {
-				$self->{first_error} = $_;
-			}
-		}
+		# if(@ERRORS) {
+			# $_ = $ERRORS[0][1];
+			# if( m!\bat (.*?) line (\d+)\.! ) {
+				# $self->{first_error} = $` . $&;
+			# } else {
+				# $self->{first_error} = $_;
+			# }
+		# }
 		
-		######### обрезаем последнюю строку со статусом
-		if(@FAIL) {
-			@fail = split /\n/, $FAIL[$#FAIL][1];
-			$self->{test_status} = pop @fail;
-			$FAIL[$#FAIL][1] = join "\n", @fail;
-			pop @FAIL if $FAIL[$#FAIL][1] eq "";
-		}
+		# ######### обрезаем последнюю строку со статусом
+		# if(@FAIL) {
+			# @fail = split /\n/, $FAIL[$#FAIL][1];
+			# $self->{test_status} = pop @fail;
+			# $FAIL[$#FAIL][1] = join "\n", @fail;
+			# pop @FAIL if $FAIL[$#FAIL][1] eq "";
+		# }
 		
-		if(!$self->{log}) {
-			if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
-				print $map->($self->{first_error});
-				print "\nпосле строки № $ERRORS[0][0]\n";
-			}
+		# if(!$self->{log}) {
+			# if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
+				# print $codeFile->mapiferror($self->{first_error}, $self);
+				# print "\nпосле строки № $ERRORS[0][0]\n";
+			# }
 			
-			if(@FAIL) {	# (@FAIL && $first == 2)
-				print $map->($FAIL[0][1]);
-				print "\nна строке № $FAIL[0][0]\n";
-			}
-		}
+			# if(@FAIL) {	# (@FAIL && $first == 2)
+				# print $codeFile->mapiferror($FAIL[0][1], $self);
+				# print "\nна строке № $FAIL[0][0]\n";
+			# }
+		# }
 		return if $count_ok != $count_tests;
 	}
 	return 1;

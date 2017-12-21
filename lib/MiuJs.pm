@@ -1,7 +1,7 @@
 package MiuJs;
 # врайтер Javascript
 
-use base MiuFile;
+use base MiuTestFile;
 
 use common::sense;
 use EssentialMiu;
@@ -26,13 +26,14 @@ sub test_ext {
 # возвращает путь к интерпретатору для tap-парсера
 sub exec {
 	my ($self, $miu) = @_;	
-	[$self->executor("node"), $self->{path}]
+	return EssentialMiu::executor("node"), $self->{path};
 }
 
 # возвращает символ для регулярки
 sub comment {
 	"//"
 }
+
 
 # пытается распознать в строке ошибку и отмапить
 sub mapiferror {
@@ -43,7 +44,7 @@ sub mapiferror {
 	if($s =~ $path) {
 		my $lineno = $self->{map}[$1-1];
 		$s =~ s!$path!$& (AKA $lineno IN $miu->{path})! if defined $lineno;
-	}	
+	}
 	$s
 }
 

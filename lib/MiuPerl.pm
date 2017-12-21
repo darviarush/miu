@@ -1,7 +1,7 @@
 package MiuPerl;
 # драйвер тестов для языка perl
 
-use base MiuFile;
+use base MiuTestFile;
 
 use common::sense;
 
@@ -29,7 +29,7 @@ sub test_ext {
 # возвращает путь к интерпретатору для tap-парсера
 sub exec {
 	my ($self, $miu) = @_;
-	[$^X, '-I' . $miu->{libdir}, $self->{path}]
+	return $^X, '-I' . $miu->{libdir}, $self->{path};
 }
 
 # возвращает символ для регулярки
@@ -98,7 +98,7 @@ $buf
 # раздел теста
 sub header {
 	my ($self, $header, $level) = @_;
-	$self->println("print STDERR $header . \"\\n\";");
+	$self->println("print $header . \"\\n\";");
 }
 
 # преобразовать в regexp кода

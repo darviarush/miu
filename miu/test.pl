@@ -14,9 +14,12 @@
 
 use IPC::Open3::Simple;
 
+my @out;
+my @err;
+
 my $ipc = IPC::Open3::Simple->new(
-	out => sub { print "out: " . $_[0]; },
-	err => sub { print "err: " . $_[0]; },
+	out => sub { print "out: $_[0]\n"; },
+	err => sub { print "err: $_[0]\n"; },
 );
 
 $ipc->run('/cygdrive/c/sbin/nodejs/node.exe .miu/10-miu.t.js');

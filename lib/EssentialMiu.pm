@@ -57,10 +57,25 @@ sub msg {
 }
 
 
-# 
+# дополняет вывод строкой, чтобы было видно лучше
 sub msg1 {
 	print STDERR colored(["yellow on_red"], "=============") . " ";
 	goto &msg;
 }
+
+# утилита для обнаружения полного пути к исполняемому файлу
+sub executor {
+	my ($executor) = @_;
+	local ($_, $!);
+	my $x;
+	
+	my $PATH = $ENV{'PATH'};
+	my @PATH = split /[:;]/, $PATH;
+	
+	-f($x = "$_/$executor") and return $x for @PATH;
+	
+	die "не удалось обнаружить $executor в PATH=$PATH";
+}
+
 
 1;

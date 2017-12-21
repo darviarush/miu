@@ -18,19 +18,6 @@ sub new {
 	}, ref $cls || $cls;
 }
 
-# утилита для обнаружения полного пути к исполняемому файлу
-sub executor {
-	my ($self, $executor) = @_;
-	local $_;
-	my $x;
-	
-	my $PATH = $ENV{'PATH'};
-	my @PATH = split /[:;]/, $PATH;
-	
-	-f($x = "$_/$executor") and return $x for @PATH;
-	
-	die "не удалось обнаружить $executor в PATH=$PATH";
-}
 
 # количество строк
 sub lines {
@@ -88,12 +75,6 @@ sub splice {
 	$self
 }
 
-# устанавливает количество тестов
-sub count_tests {
-	my ($self, $count_tests) = @_;
-	$self->{count_tests} = $count_tests;	
-	$self
-}
 
 # хук перед сохранением
 sub before_save {

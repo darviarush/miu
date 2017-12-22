@@ -29,7 +29,7 @@ sub parse {
 	return ResultMiu->new($s, "err") if $stderr;
 	return ResultMiu->new($s, "ok", rem=>$`, num=>$1) if /^ok (\d+) (- )?/;
 	return ResultMiu->new($s, "fail", rem=>$`, num=>$1) if /^not ok (\d+) (- )?/;
-	return ResultMiu->new($s, "plan", pass=>$1, count=>$2) if /^(\d+)..(\d+)/;
+	return ResultMiu->new($s, "plan", pass=>$1, count=>$2) if /^(\d+)\.\.(\d+)/;
 	return ResultMiu->new($s, "comment", rem=>$`) if /^#[ \t]/;
 	return ResultMiu->new($s, "header", rem=>$`) if /^=+[ \t]+/;
 	

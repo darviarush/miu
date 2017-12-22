@@ -8,8 +8,8 @@ use EssentialMiu;
 sub new {
 	my $cls = shift;
 	bless {
-		errorlines => [],
-		@_
+		@_,
+		waserr => 0,
 	}, ref $cls || $cls;
 }
 
@@ -23,15 +23,14 @@ sub start {
 sub report {
 	my ($self, $result, $current_line) = @_;
 	
-	$self->{line_last} = $current_line if $result->is_test;
+	my $res = "";
 	
-	return "." if $result->is_ok;
-	$self->{line_first_fail} //= $current_line, return $self->colored("E", "red") if $result->is_fail;
+	$res .= "." if $result->is_ok;
+	$res .= $self->colored("E", "magenta") if $result->is_fail;
 	
-	#print $self->colored("F", "cyan"),
-	# push @{$self->{errorlines}}, $result->raw
-		# if $result->is_err;
-	return;
+	$self->{waserr} = 1, $res .= $self->colored("F", "cyan") if $result->is_err && !$self->{waserr};
+	$self->{waserr} = 0 if $result->is_test;
+	return $res;
 }
 
 # тесты прошли
@@ -42,13 +41,22 @@ sub ok {
 
 # тесты не прошли
 sub fail {
-	my ($self, $count_ok, $count_fail) = @_;
-	my $last_tests = $self->{count_tests} - $count_ok - $count_fail;
+	my ($self) = @_;
+	my $ok = $self->{ok};
+	my $fail = $self->{fail};
+	my $count = $self->{count_tests};
+	my $count_ok = keys %$ok;
+	my $count_fail = keys %$fail;
+	my $last_tests = $count - $count_ok - $count_fail;
 	my @ret;
 	push @ret, $self->colored("_" x $last_tests, "black", "bold");
 	push @ret, $self->colored(" fail", "red") . "\n";
-	push @ret, "первая ошибка на ".$self->colored($self->{line_first_fail}, "white")." строке\n" if defined $self->{line_first_fail};
-	push @ret, "последний тест на ".$self->colored($self->{line_last}, "white")."\n" if $last_tests and defined $self->{line_last};
+	
+	use List::Util qw/max min/;
+	
+	my ($line_first, $line_last);
+	push @ret, "первая ошибка на ".$self->colored($line_first, "white")." строке\n" if $line_first = min values %$fail;
+	push @ret, "последний тест на ".$self->colored($line_last, "white")."\n" if $last_tests and $line_last = max values %$ok, values %$fail;
 	return join "", @ret;
 }
 

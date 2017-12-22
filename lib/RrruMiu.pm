@@ -286,7 +286,7 @@ sub compile {
 						
 					}
 					else {
-						$end = $self->{codeFile}->scalar($end)
+						$end = $self->{codeFile}->scalar($end, $code)
 					}
 					
 					
@@ -300,19 +300,19 @@ sub compile {
 						# $start = "___get()";
 					# }
 					if($who eq ">>") {	    #STDOUT
-                        ($begin, $start) = $self->{codeFile}->stdout($start);
+                        ($begin, $start) = $self->{codeFile}->stdout($start, $code);
 					}
 					elsif($who eq "&>") {	#STDERR
-						($begin, $start) = $self->{codeFile}->stderr($start);
+						($begin, $start) = $self->{codeFile}->stderr($start, $code);
 					}
 					elsif($who eq "\@") {
-						($begin, $start) = $self->{codeFile}->catch($start);
+						($begin, $start) = $self->{codeFile}->catch($start, $code);
 					}
 					elsif($who eq "!") {
-						($begin, $start) = $self->{codeFile}->retcode($start);
+						($begin, $start) = $self->{codeFile}->retcode($start, $code);
 					}
 					
-					$start = $self->{codeFile}->scalar($start);
+					$start = $self->{codeFile}->scalar($start, $code);
 
 					my $desc = $_;
 					$desc =~ s/\\[nrt]/\\$&/g;
@@ -445,14 +445,18 @@ sub test {
 		
 		my $current_test;
 		my $current_line;
-		my $count_ok;
-		my $count_fail;
+		my %ok = ();
+		my %fail = ();
 		my $count_tests = $codeFile->{count_tests};
 		
 		use Reporter::MiuDot;
 		my $reporter = Reporter::MiuDot->new(
 			uncolor=>$self->{uncolor}, 
 			count_tests=>$count_tests,
+			lines => $self->{lines},
+			ok => \%ok,
+			fail => \%fail,
+			path => $self->{path},
 		);
 		print $reporter->start;
 		
@@ -472,8 +476,8 @@ sub test {
 			my $out = $reporter->report($result, $current_line);
 			print $out if !$self->{log} && !$self->{stat};
 			
-			$count_ok++ if $result->is_ok;
-			$count_fail++ if $result->is_fail;
+			$ok{$current_test} = $current_line if $result->is_ok;
+			$fail{$current_test} = $current_line if $result->is_fail;
 			
 			
 			# по логам
@@ -484,81 +488,45 @@ sub test {
 			print $codeFile->mapiferror($s, $self) . "\n" if $self->{log};
 		};
 		
-		my $stdout = [];
-		my $stderr = [];
-		my $cb = sub {
-			my ($chunk, $std) = @_;
-			while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
-				push @$std, $1;
-				$parseLine->(join("", @$std), $std == $stderr);
-				@$std = ();
-			}
-			push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
-		};
+		### open3 simple
+		use IPC::Open3::Simple;
+		my $ipc = IPC::Open3::Simple->new(out=>sub{$parseLine->($_[0], 0)}, err=>sub{$parseLine->($_[0], 1)});
+		$ipc->run($codeFile->exec($self));
 		
-		#use IPC::Open3::Simple;
+		# ### open3 callback
+		# my $stdout = [];
+		# my $stderr = [];
+		# my $cb = sub {
+			# my ($chunk, $std) = @_;
+			# while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
+				# push @$std, $1;
+				# $parseLine->(join("", @$std), $std == $stderr);
+				# @$std = ();
+			# }
+			# push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
+		# };
 		
-		$Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
+		# $Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
 		
-		use IPC::Open3::Callback;
-		my $ipc = IPC::Open3::Callback->new({
-			out_callback => sub { $cb->($_[0], $stdout) }, 
-			err_callback => sub { $cb->($_[0], $stderr) }
-		});
-		$ipc->run_command($codeFile->exec($self));
+		# use IPC::Open3::Callback;
+		# my $ipc = IPC::Open3::Callback->new({
+			# out_callback => sub { $cb->($_[0], $stdout) }, 
+			# err_callback => sub { $cb->($_[0], $stderr) }
+		# });
+		# $ipc->run_command($codeFile->exec($self));
 		
-		
-		# push @FAIL, [$current_line, join("\n", @fail)] if @fail;
-		# push @ERRORS, [$current_line, join("\n", @errors)] if @errors;
-		
+				
 		close $log;
 		close $stat;
-
-		if($count_ok == $count_tests && $count_tests != 0) {
+		
+		if(keys(%ok) == $count_tests && $count_tests != 0) {
 			print $reporter->ok;
 		}
 		else {
-			print $reporter->fail($count_ok, $count_fail);
+			print $reporter->fail;
 		}
 		
-		
-		
-		######### сохраняем фейлы и ошибки
-		# $self->{fail} = [@FAIL];
-		# $self->{errors} = [@ERRORS];
-		
-		#use Data::Dumper; print Dumper(\@FAIL, \@ERRORS);
-		
-		######### первая ошибка
-		# if(@ERRORS) {
-			# $_ = $ERRORS[0][1];
-			# if( m!\bat (.*?) line (\d+)\.! ) {
-				# $self->{first_error} = $` . $&;
-			# } else {
-				# $self->{first_error} = $_;
-			# }
-		# }
-		
-		# ######### обрезаем последнюю строку со статусом
-		# if(@FAIL) {
-			# @fail = split /\n/, $FAIL[$#FAIL][1];
-			# $self->{test_status} = pop @fail;
-			# $FAIL[$#FAIL][1] = join "\n", @fail;
-			# pop @FAIL if $FAIL[$#FAIL][1] eq "";
-		# }
-		
-		# if(!$self->{log}) {
-			# if(@ERRORS && !@FAIL) {	# @ERRORS && $first == 1
-				# print $codeFile->mapiferror($self->{first_error}, $self);
-				# print "\nпосле строки № $ERRORS[0][0]\n";
-			# }
-			
-			# if(@FAIL) {	# (@FAIL && $first == 2)
-				# print $codeFile->mapiferror($FAIL[0][1], $self);
-				# print "\nна строке № $FAIL[0][0]\n";
-			# }
-		# }
-		return if $count_ok != $count_tests;
+		return if keys(%ok) != $count_tests;
 	}
 	return 1;
 }

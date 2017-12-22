@@ -24,24 +24,38 @@ miu считает любой текст примыкающий к началу 
 	8 //!= 3
 	"8" //== 8
 	"test" //~ es.$
-	{} //!~ (?i)^array
+	{} //~ ^\[object Object\]$
+	{} //!~ ^\[Object
+	{} //#~ /^\[Object/i
 	123456 //startswith 123
 	123456 //endswith 456
 	
 Если тест бросает исключение, то его можно протестировать так:
 	
-	throw Error("myexception") //@ startswith myexception
-	throw Error("myexception") //#@ !~ /чего\?/
-	throw Error("myexception") //@ !~ чего\?
+	throw new Error("myexception") //@ startswith myexception
+	throw new Error("myexception") //#@ !~ /чего\?/
+	throw new Error("myexception") //@ !~ чего\?
 	
 	
 Если необходимо захватить несколько строк на которых должно произойти исключение, то используем `$@`:
 
 	try {
-		throw Error("abc");
+		throw new Error("abc");
 	} catch(e) {
-		e;			//startswith abc
+		e.message;			// abc
+		e+"";				// Error: abc
+		e					//# new Error("abc")
 	}
 	
 Не используйте тесты в блоке `catch`, т.к. они бросают исключения.
 
+=== Асинхронный тест
+
+	setTimeout(function() {
+		5 // 5
+	}, 100);
+
+=== Внутренние переменные
+
+* `tape$` - тестировщик tape
+* `T$` - его переменная

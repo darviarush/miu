@@ -18,3 +18,5 @@ push @INC, $f;
 require "RrruMiu.pm";
 
 my $miu = RrruMiu->new->parse->run;
+
+1;

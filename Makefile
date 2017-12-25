@@ -34,4 +34,3 @@ js:
 		
 cpan:
 		perl gencpanfile.pl > cpanfile
-		

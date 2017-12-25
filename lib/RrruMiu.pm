@@ -458,7 +458,7 @@ sub test {
 			fail => \%fail,
 			path => $self->{path},
 		);
-		print $reporter->start;
+		$reporter->start;
 		
 		my $parseLine = sub {
 			my ($s, $stderr) = @_;
@@ -473,8 +473,7 @@ sub test {
 				print "$current_line: " if $self->{log} || $self->{stat};
 			}
 			
-			my $out = $reporter->report($result, $current_line);
-			print $out if !$self->{log} && !$self->{stat};
+			$reporter->report($result, $current_line) if !$self->{log} && !$self->{stat};
 			
 			$ok{$current_test} = $current_line if $result->is_ok;
 			$fail{$current_test} = $current_line if $result->is_fail;
@@ -520,10 +519,10 @@ sub test {
 		close $stat;
 		
 		if(keys(%ok) == $count_tests && $count_tests != 0) {
-			print $reporter->ok;
+			$reporter->ok;
 		}
 		else {
-			print $reporter->fail;
+			$reporter->fail;
 		}
 		
 		return if keys(%ok) != $count_tests;

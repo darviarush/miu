@@ -23,14 +23,11 @@ sub start {
 sub report {
 	my ($self, $result, $current_line) = @_;
 	
-	my $res = "";
+	print "." if $result->is_ok;
+	print $self->colored("E", "magenta") if $result->is_fail;
 	
-	$res .= "." if $result->is_ok;
-	$res .= $self->colored("E", "magenta") if $result->is_fail;
-	
-	$self->{waserr} = 1, $res .= $self->colored("F", "cyan") if $result->is_err && !$self->{waserr};
+	$self->{waserr} = 1, print $self->colored("F", "cyan") if $result->is_err && !$self->{waserr};
 	$self->{waserr} = 0 if $result->is_test;
-	return $res;
 }
 
 # тесты прошли

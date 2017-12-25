@@ -259,7 +259,7 @@ sub compile {
 			
 			###################### [test]
 			elsif($thisIsTest && ($test_write || $init)) {
-								
+
 				my $oper = "gt|lt|ne|eq|le|ge|==|!=|>|<|<=|>=|~|!~|startswith|endswith";
 				my $comment = $self->{codeFile}->comment;	# возвращает # для perl или // для js
 				if(/^\s*#/) {

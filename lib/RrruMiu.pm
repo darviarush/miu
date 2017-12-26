@@ -45,6 +45,7 @@ sub parse {
 		"u|libdir=s" => \$opt{libdir},
 		"b|bindir=s" => \$opt{bindir},
 		"c|uncolor" => \$opt{uncolor},
+		"r|reporter=s" => \$opt{reporter},
 		"h|help" => \$opt{help},
 	);
 
@@ -85,6 +86,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -u, --libdir=dir      директория для пакетов perl
     -b, --bindir=dir      директория для файлов кода
     -c, --uncolor         отключить цвет
+    -r, --reporter=name   указать формат выдачи на консоль
     -h, --help            эта справка
 ";
 		exit;
@@ -449,8 +451,13 @@ sub test {
 		my %fail = ();
 		my $count_tests = $codeFile->{count_tests};
 		
-		use Reporter::MiuDot;
-		my $reporter = Reporter::MiuDot->new(
+		my $reporter = "Reporter/Miu" . ucfirst(lc $self->{reporter} || "Dot") . ".pm";
+		eval {require $reporter};
+		print("нет обозревателя $self->{reporter}:\n$@\n"), $self->{reporter} = "dot", require "Reporter/MiuDot.pm" if $@;
+		
+		my $class = "Reporter::Miu" . ucfirst(lc $self->{reporter});
+		
+		my $reporter = $class->new(
 			uncolor=>$self->{uncolor}, 
 			count_tests=>$count_tests,
 			lines => $self->{lines},

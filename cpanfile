@@ -1,6 +1,8 @@
 requires 'Carp'; # == 1.42
+requires 'Config'; # == 5.026001
 requires 'Cwd'; # == 3.67
 requires 'Data::Dumper'; # == 2.167
+requires 'DynaLoader'; # == 1.42
 requires 'Exporter'; # == 5.72
 requires 'Exporter::Heavy'; # == 5.72
 requires 'File::Basename'; # == 2.85
@@ -17,6 +19,7 @@ requires 'Scalar::Util'; # == 1.49
 requires 'SelectSaver'; # == 1.02
 requires 'Symbol'; # == 1.08
 requires 'Term::ANSIColor'; # == 4.06
+requires 'Time::HiRes'; # == 1.9741
 requires 'XSLoader'; # == 0.27
 requires 'base'; # == 2.26
 requires 'bytes'; # == 1.05

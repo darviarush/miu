@@ -32,7 +32,7 @@ sub report {
 # тесты прошли
 sub ok {
 	my ($self) = @_;
-	$self->colored(" ok\n", "black", "bold");
+	print $self->colored(" ok", "black", "bold") . "\n";
 }
 
 # тесты не прошли

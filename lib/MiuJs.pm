@@ -118,7 +118,7 @@ function assert\$(ok, num, got, op, expected, msg) {
 }
 
 var S\$, R\$, E\$;
-console.log('0..'+$count_tests);
+console.log('1..'+$count_tests);
 ");
 
 	#$self->println("});", "");

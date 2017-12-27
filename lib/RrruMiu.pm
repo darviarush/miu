@@ -187,14 +187,14 @@ sub compile {
 	my ($thisIsTest, $thisIsCode) = (1,0);
 	my @article;
 	my $count_tests = 0;
-	my $lines = $self->{lines} = [1];
+	my $lines = $self->{lines} = {};
 	my $start_code = "\n```%s\n";
 	my $start_path_name = "";
 	my $end_code = "```\n\n";
 	
 	while(<$file>) {
 		
-		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), next if /^\[test(?:[\t ]+(\w+))?\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), next if /^\[test(?:\s+(\w+))?\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
         ($init, $thisIsCode, $thisIsTest) = (0,1,0), ($thisIsArticle? $start_path_name = "\@\@$1\n": push @article, "\@\@$1\n"), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
         
@@ -270,7 +270,7 @@ sub compile {
 				elsif( /^\s*(.*?);*[ \t]+$comment(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/ ) {
 					$self->{codeFile}->count_tests(++$count_tests);
 					
-					push @$lines, $.;
+					$lines->{"$self->{codeFile}{path}-$self->{codeFile}{count_tests}"} = $.;
 					
 					my ($start, $code, $who, $op, $op2, $end) = ($1, $2, $3, $4, $5, $6);
 					
@@ -356,7 +356,7 @@ sub compile {
 	close $file;    # закрываем файл miu
 	
     # заполняем файлы кода и тестов, очищаем codeFile и codeFiles
-    $self->save(count_tests => $count_tests, output => $self->{output});
+    $self->save;
     
 	# статья-файл
 	mkdir $`, 0744 while $self->{article_path} =~ m!/!g;
@@ -433,40 +433,41 @@ sub test {
 	
 	my @tests = sort { $a->name cmp $b->name } grep {!$_->{is_file_code}} values %{$self->{codeFiles}};
 
+	my $path = $self->{test_path};
+	
+	my $log_path = $path;
+	$log_path =~ s!\.t(\.\w+)?$!$1.log!;
+	open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
+	
+	my $stat_path = $path;
+	$stat_path =~ s!\.t(\.\w+)?$!$1.stat!;
+	open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
+
+	my $current_test;
+	my $current_line;
+	my %ok = ();
+	my %fail = ();
+	my $count_tests = $self->{count_tests};
+	$self->{reporter} //= "Dot";
+	my $reporter = "Reporter/Miu" . ucfirst(lc $self->{reporter}) . ".pm";
+	eval {require $reporter};
+	print("нет обозревателя $self->{reporter}:\n$@\n"), $self->{reporter} = "dot", require "Reporter/MiuDot.pm" if $@;
+	
+	my $class = "Reporter::Miu" . ucfirst(lc $self->{reporter});
+	
+	my $reporter = $class->new(
+		uncolor=>$self->{uncolor}, 
+		count_tests=>$count_tests,
+		lines => $self->{lines},
+		ok => \%ok,
+		fail => \%fail,
+		path => $self->{path},
+	);
+	$reporter->start;
+	
 	for my $codeFile (@tests) {
 		my $path = $codeFile->{path};
 	
-		my $log_path = $path;
-		$log_path =~ s!\.t(\.\w+)?$!$1.log!;
-		open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
-		
-		my $stat_path = $path;
-		$stat_path =~ s!\.t(\.\w+)?$!$1.stat!;
-		open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
-		
-		
-		my $current_test;
-		my $current_line;
-		my %ok = ();
-		my %fail = ();
-		my $count_tests = $codeFile->{count_tests};
-		
-		my $reporter = "Reporter/Miu" . ucfirst(lc $self->{reporter} || "Dot") . ".pm";
-		eval {require $reporter};
-		print("нет обозревателя $self->{reporter}:\n$@\n"), $self->{reporter} = "dot", require "Reporter/MiuDot.pm" if $@;
-		
-		my $class = "Reporter::Miu" . ucfirst(lc $self->{reporter});
-		
-		my $reporter = $class->new(
-			uncolor=>$self->{uncolor}, 
-			count_tests=>$count_tests,
-			lines => $self->{lines},
-			ok => \%ok,
-			fail => \%fail,
-			path => $self->{path},
-		);
-		$reporter->start;
-		
 		my $parseLine = sub {
 			my ($s, $stderr) = @_;
 			
@@ -475,8 +476,8 @@ sub test {
 			my $result = $codeFile->parse($s, $stderr);
 			
 			if( $result->is_test ) {
-				$current_test = $result->num;
-				$current_line = $self->{lines}[$current_test];
+				$current_test = $codeFile->{path} . "-" . $result->num;
+				$current_line = $self->{lines}{$current_test};
 				print "$current_line: " if $self->{log} || $self->{stat};
 			}
 			
@@ -520,20 +521,21 @@ sub test {
 			# err_callback => sub { $cb->($_[0], $stderr) }
 		# });
 		# $ipc->run_command($codeFile->exec($self));
-		
-				
-		close $log;
-		close $stat;
-		
-		if(keys(%ok) == $count_tests && $count_tests != 0) {
-			$reporter->ok;
-		}
-		else {
-			$reporter->fail;
-		}
-		
-		return if keys(%ok) != $count_tests;
+
 	}
+	
+	close $log;
+	close $stat;
+	
+	if(keys(%ok) == $count_tests && $count_tests != 0) {
+		$reporter->ok;
+	}
+	else {
+		$reporter->fail;
+	}
+	
+	return if keys(%ok) != $count_tests;
+	
 	return 1;
 }
 
@@ -590,7 +592,7 @@ sub save {
 	my @codeFiles = values %{$self->{codeFiles}};
 	for my $f (@codeFiles) {
 		delete($self->{codeFiles}{$f->{path}}), next if !$f->{is_file_code} && $f->lines == 0;
-		$f->options(@_)->save;
+		$f->save;
 	}
 
 	$self
@@ -640,7 +642,7 @@ sub totest {
 	my $drv = $self->drv($lang);
 	my $path = $self->{test_path} . $drv->test_ext;
 	
-	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path);
+	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path, output => $self->{output});
 	
 	$self
 }

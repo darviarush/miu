@@ -11,7 +11,7 @@ remote:
 		git remote add github git@github.com:darviarush/miu.git
 
 README.md: miu/00-miu.miu.pl
-		(cd miu && miu 00:10 && cp .miu/00-miu.markdown ../README.md)
+		(cd miu && miu 00:10 && cp .miu/00-miu.markdown ../README.md && cp .miu/*.markdown ../mark)
 
 dist: README.md cpan
 		git add .

@@ -9,13 +9,14 @@ use common::sense;
 # конструктор
 sub new {
 	my $cls = shift;
-	$cls->SUPER::new(is_file_code => 0, @_);
+	$cls->SUPER::new(is_file_code => 0, count_tests=>0, current_test=>0, @_);
 }
 
 # устанавливает количество тестов
 sub count_tests {
 	my ($self, $count_tests) = @_;
-	$self->{count_tests}++;	
+	$self->{count_tests}++;
+	$self->{current_test} = $count_tests;
 	$self
 }
 

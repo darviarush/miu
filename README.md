@@ -136,7 +136,7 @@ for_io_test(); #>> 123\n
 
 **[test perl]**
 
-Подробнее о тестировании javascript [тут](https://github.com/darviarush/miu/mark/10-miu.markdown).
+Подробнее о тестировании javascript [тут](10-miu.markdown Тестирование javascript).
 
 На данном этапе развития `miu` тесты `javascript` будут выполнены после или перед тестами `perl`.
 

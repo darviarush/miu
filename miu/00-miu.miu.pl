@@ -94,7 +94,7 @@ miu считает любой текст примыкающий к началу 
 **[test perl]**
 [test perl]
 	
-Подробнее о тестировании javascript [тут](https://github.com/darviarush/miu/mark/10-miu.markdown).
+Подробнее о тестировании javascript [тут](10-miu.markdown Тестирование javascript).
 
 На данном этапе развития `miu` тесты `javascript` будут выполнены после или перед тестами `perl`.
 

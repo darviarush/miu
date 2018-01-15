@@ -13,6 +13,11 @@ BEGIN {
 
 #msg1(":green", "✓·×");
 
+# use POSIX qw/INT/;
+# $SIG{INT} = sub {
+	# kill -INT, $$;
+# };
+
 # конструктор
 sub new {
 	my $cls = shift;

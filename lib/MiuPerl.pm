@@ -68,6 +68,8 @@ sub before_save {
 BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
+	
+	open(STDERR, ">&STDOUT");
 }
 
 use utf8;

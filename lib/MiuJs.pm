@@ -24,7 +24,7 @@ sub test_ext {
 }
 
 # возвращает путь к интерпретатору для tap-парсера
-sub exec {
+sub exec_param {
 	my ($self, $miu) = @_;	
 	return EssentialMiu::executor("node"), $self->{path};
 }
@@ -48,11 +48,15 @@ sub mapiferror {
 	$s
 }
 
+# возвращает функцию для вывода
+sub printfn {
+	"console.log"
+}
 
 # раздел теста
 sub header {
 	my ($self, $header, $level) = @_;
-	$self->println("console.log($header);");
+	$self->println($self->printfn . "($header);");
 }
 
 # дополняем сохранение
@@ -60,7 +64,8 @@ sub before_save {
 	my $self = shift;
 	
 	my $count_tests = $self->{count_tests};
-	my $path = $self->string($self->{path});
+	#my $path = $self->string($self->{path});
+	my $log = $self->printfn;
 	
 	$self->unshift_test("// сгенерировано miu
 
@@ -104,24 +109,22 @@ function deepEqual\$(a, b, path_a, path_b) {
 	
 function assert\$(ok, num, got, op, expected, msg) {
 	if(ok) {
-		console.log('ok '+num+' - '+msg)
+		$log('ok '+num+' - '+msg)
 	} else {
-		console.log('not ok '+num+' - '+msg)
-		console.log('#  Failed test: '+msg)
-		console.log('#    got:      '+got)
-		console.log('#    operator: '+op)
-		console.log('#    expected: '+expected)
+		$log('not ok '+num+' - '+msg)
+		$log('#  Failed test: '+msg)
+		$log('#    got:      '+got)
+		$log('#    operator: '+op)
+		$log('#    expected: '+expected)
 	
 		var s = new Error().stack.replace(/\\n/g, '\\n#        ')
-		console.log('#      trace: '+s)
+		$log('#      trace: '+s)
 	}
 }
 
 var S\$, R\$, E\$;
-console.log('1..'+$count_tests);
+$log('1..'+$count_tests);
 ");
-
-	#$self->println("});", "");
 	
 	$self
 }

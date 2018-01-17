@@ -11,6 +11,11 @@ BEGIN {
 	select(STDOUT); $| = 1; # default
 }
 
+sub DESTROY {
+	my $self = shift;
+	$self->{sd}->close if $self->{sd};
+}
+
 #msg1(":green", "✓·×");
 
 # use POSIX qw/INT/;
@@ -51,6 +56,7 @@ sub parse {
 		"b|bindir=s" => \$opt{bindir},
 		"c|uncolor" => \$opt{uncolor},
 		"r|reporter=s" => \$opt{reporter},
+		"B|browser=s" => \$opt{browser},
 		"h|help" => \$opt{help},
 	);
 
@@ -92,6 +98,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -b, --bindir=dir      директория для файлов кода
     -c, --uncolor         отключить цвет
     -r, --reporter=name   указать формат выдачи на консоль
+	-B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
     -h, --help            эта справка
 ";
 		exit;
@@ -473,10 +480,9 @@ sub test {
 	for my $codeFile (@tests) {
 		my $path = $codeFile->{path};
 	
+		# парсер каждой строки: объединяет процесс выполнения тестов и вывод отчёта
 		my $parseLine = sub {
 			my ($s, $stderr) = @_;
-			
-			######### логика
 			
 			my $result = $codeFile->parse($s, $stderr);
 			
@@ -500,33 +506,8 @@ sub test {
 			print $codeFile->mapiferror($s, $self) . "\n" if $self->{log};
 		};
 		
-		### open3 simple
-		use IPC::Open3::Simple;
-		my $ipc = IPC::Open3::Simple->new(out=>sub{$parseLine->($_[0], 0)}, err=>sub{$parseLine->($_[0], 1)});
-		$ipc->run($codeFile->exec($self));
-		
-		# ### open3 callback
-		# my $stdout = [];
-		# my $stderr = [];
-		# my $cb = sub {
-			# my ($chunk, $std) = @_;
-			# while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
-				# push @$std, $1;
-				# $parseLine->(join("", @$std), $std == $stderr);
-				# @$std = ();
-			# }
-			# push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
-		# };
-		
-		# $Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
-		
-		# use IPC::Open3::Callback;
-		# my $ipc = IPC::Open3::Callback->new({
-			# out_callback => sub { $cb->($_[0], $stdout) }, 
-			# err_callback => sub { $cb->($_[0], $stderr) }
-		# });
-		# $ipc->run_command($codeFile->exec($self));
-
+		# выполняем тест-файлы в отдельных процессах. На каждую строку вывода должна запускаться $parseLine
+		$codeFile->exec($self, $parseLine);		
 	}
 	
 	close $log;

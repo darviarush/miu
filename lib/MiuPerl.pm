@@ -27,7 +27,7 @@ sub test_ext {
 }
 
 # возвращает путь к интерпретатору для tap-парсера
-sub exec {
+sub exec_param {
 	my ($self, $miu) = @_;
 	return $^X, '-I' . $miu->{libdir}, $self->{path};
 }

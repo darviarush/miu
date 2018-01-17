@@ -140,6 +140,16 @@ for_io_test(); #>> 123\n
 
 На данном этапе развития `miu` тесты `javascript` будут выполнены после или перед тестами `perl`.
 
+`miu` умеет запускать **javascript** тесты в браузере. Для переключения на такие тесты используйте **[test jsb]** в начале. Подробнее [тут](https://github.com/darviarush/miu/blob/master/mark/11-in-browser.markdown "Тестирование javascript в браузере").
+
+**[test jsb]**
+
+//[test jsb]
+
+window 		// [object Window]
+document	// [object HTMLDocument]
+
+
 ## Программный код
 
 Код программы так же может быть записан в файл miu. Он так же должен иметь отступ.

@@ -1,3 +1,4 @@
+requires 'AutoLoader'; # == 5.74
 requires 'Carp'; # == 1.42
 requires 'Config'; # == 5.026001
 requires 'Cwd'; # == 3.67
@@ -14,9 +15,13 @@ requires 'IO::Handle'; # == 1.36
 requires 'IO::Select'; # == 1.22
 requires 'IPC::Open3'; # == 1.20
 requires 'IPC::Open3::Simple'; # == 0.04
+requires 'LWP::Debug'; # == 6.31
+requires 'LWP::IO';
+requires 'LWP::Socket'; # == 1.24
 requires 'List::Util'; # == 1.49
 requires 'Scalar::Util'; # == 1.49
 requires 'SelectSaver'; # == 1.02
+requires 'Socket'; # == 2.024
 requires 'Symbol'; # == 1.08
 requires 'Term::ANSIColor'; # == 4.06
 requires 'Time::HiRes'; # == 1.9741

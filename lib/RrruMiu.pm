@@ -279,12 +279,25 @@ sub compile {
 				if(/^\s*#/) {
 					$self->{codeFile}->println($_);
 				}
-				elsif( /^\s*(.*?);*[ \t]+$comment(#)?(?:(\@|!|>>|&>)(?:[ \t]+($oper))?|($oper))?[ \t](.*?)$/ ) {
+				elsif( /^
+					\s* (.*?) ;* 
+					[\ \t]+ $comment (\#)? 
+					(?:
+						(?:
+							($oper)
+							|
+							(\@|!|>>|&>)	(?: [\ \t]+ ($oper))?
+						)
+						
+						[\ \t]+
+					)?
+					(.*?) $
+					/x ) {
 					$self->{codeFile}->count_tests(++$count_tests);
 					
 					$lines->{"$self->{codeFile}{path}-$self->{codeFile}{count_tests}"} = $.;
 					
-					my ($start, $code, $who, $op, $op2, $end) = ($1, $2, $3, $4, $5, $6);
+					my ($start, $code, $op, $who, $op2, $end) = ($1, $2, $3, $4, $5, $6);
 					
 					$op //= $op2;
 					

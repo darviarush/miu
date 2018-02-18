@@ -5,7 +5,7 @@ use common::sense;
 use Term::ANSIColor qw/colored color/;
 
 # импортирует в вызывавший модуль функции
-my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color/);
+my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color executor mkpath input output/);
 sub import {
 	my $self = shift;
 	
@@ -72,10 +72,36 @@ sub executor {
 	my $PATH = $ENV{'PATH'};
 	my @PATH = split /[:;]/, $PATH;
 	
-	-f($x = "$_/$executor") and return $x for @PATH;
+	-x($x = "$_/$executor") and return $x for @PATH;
 	
 	die "не удалось обнаружить $executor в PATH=$PATH";
 }
 
+# создаёт пути
+sub mkpath ($) {
+	my ($path) = @_;
+	local $_;
+	mkdir $` while $path =~ m!/!g;
+	undef $!;
+	$path
+}
+
+# считывает файл
+sub input ($) {
+	my ($path) = @_;
+	open my $f, "<:utf8", $path or die "невозможно открыть файл `$path`: $!";
+	read $f, my $data, -s $f;
+	close $f;
+	$data
+}
+
+# записывает в файл
+sub output ($@) {
+	my $path = shift;
+	open my $f, ">:utf8", $path or die "невозможно создать файл `$path`: $!";
+	my $size = print $f @_;
+	close $f;
+	$size
+}
 
 1;

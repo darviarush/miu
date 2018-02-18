@@ -32,6 +32,21 @@ sub new {
 	}, $cls
 }
 
+# перестраивает паттерны
+sub build_patterns ($) {
+	my ($patterns) = @_;
+	for my $art_pattern (@$patterns) {
+		$art_pattern =~ s/^(\^)?(.*?)(\$)?$/$2/;
+		my ($add, $sub);
+		$add = "^[=#]+\\s*" if $1;
+		$sub = "\\s*\$" if $3;
+		
+		my $x = quotemeta $art_pattern;
+		$x =~ s!(\\?\s)+!\\s+!g;
+		$art_pattern = qr/$add$x$sub/i;
+	}
+}
+
 # парсит параметры командной строки
 sub parse {
 	my $self = shift;
@@ -57,6 +72,7 @@ sub parse {
 		"c|uncolor" => \$opt{uncolor},
 		"r|reporter=s" => \$opt{reporter},
 		"B|browser=s" => \$opt{browser},
+		"w|watch" => \$opt{watch},
 		"h|help" => \$opt{help},
 	);
 
@@ -66,7 +82,9 @@ sub parse {
 
 	utf8::decode($_) for @{$opt{pattern}};
 	utf8::decode($_) for @{$opt{art_pattern}};
-
+	
+	build_patterns $opt{art_pattern};
+	
 	eval {
 		require "Text/Markdown.pm";
 	};
@@ -93,88 +111,86 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -i, --inspect[=n-k|l] тест в stdout. n - от строки, k - до строки. l - строка
     -l, --log             лог в stdout
     -s, --stat            статистику в stdout
-    -o, --outdir=dir      директория для скомпиллированных файлов
-    -u, --libdir=dir      директория для пакетов perl
+    -o, --outdir=dir      директория для скомпиллированных тестов (.t)
+    -u, --libdir=dir      директория для файлов на @@
     -b, --bindir=dir      директория для файлов кода
     -c, --uncolor         отключить цвет
     -r, --reporter=name   указать формат выдачи на консоль
 	-B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
+    -w, --watch           выполнять тесты из изменившейся главы
     -h, --help            эта справка
 ";
 		exit;
 	}
 	
-	mkdir $self->{output} unless -e $self->{output};
-	
 	# удаляем /
-	$self->{input} =~ s!/$!!;
 	$self->{output} =~ s!/$!!;	
+		
+	if(!$self->{watch}) {
+		$self->find(\&prepare);
+		print "Не найдено ни одного теста\n" if $self->{count_tests} == 0;
+		return;
+	}
 	
-	#$self->{log} = 1 if $self->{stat};
+	$self->watch(\&prepare);
+}
+
+# парсим файл и переписываем
+sub prepare {
+	my ($self, $path) = @_;
 	
-	my $count = 0;
+	print "$path ";
 	
-	# парсим файл и переписываем
-	$self->find(sub {
-		my ($path) = @_;
-		
-		$count++;
-		
-		print "$path ";
-		
-		$self->{path} = $path;
-		
-		my $sub = substr $path, length $self->{input};
-		$sub =~ s!^/!!;
+	$self->{path} = $path;
+
+	$_ = $self->{output} . "/" . $path;
 	
-		$_ = $self->{output} . "/" . $sub;
-		s/(?:\.miu)?\.\w+$//i;	# удаляем расширение
-		$self->{article_path} = "$_.markdown";
-		$self->{test_path} = "$_.t";
-		$self->{html_path} = "$_.html";
-		$self->{bbcode_path} = "$_.bbcode";
+	mkpath $_;
+	s/(?:\.miu)?\.\w+$//i;	# удаляем расширение
+	$self->{article_path} = "$_.markdown";
+	$self->{test_path} = "$_.t";
+	$self->{html_path} = "$_.html";
+	$self->{bbcode_path} = "$_.bbcode";
+	
+	$_ = $self->{bindir} . "/" . $path;
+	mkpath $_;
+	s/(?:\.miu)?\.\w+$//i;
+	$self->{code_path} = $_;	
+	
+	$self->compile if !$self->{test};
+	
+	if(defined $self->{inspect}) {
+		# Syntax::Highlight::Engine::Simple
+		# 
+		#`/usr/bin/env mcedit "$self->{test_path}"`;
+		#if($? != 0) {
 		
-		$_ = $self->{bindir} . "/" . $sub;
-		s/(?:\.miu)?\.\w+$//i;
-		$self->{code_path} = $_;	
+		my ($from, $to) = split /-/, $self->{inspect};
 		
-		$self->compile if !$self->{test};
+		$to //= $from;
 		
-		if(defined $self->{inspect}) {
-			# Syntax::Highlight::Engine::Simple
-			# 
-			#`/usr/bin/env mcedit "$self->{test_path}"`;
-			#if($? != 0) {
-			
-			my ($from, $to) = split /-/, $self->{inspect};
-			
-			$to //= $from;
-			
+		print "\n";
+		open my $f, "<", $self->{test_path} or die "не открыт файл теста $self->{test_path}: $!";
+		while(<$f>) {	
+			if( $from eq "" || $. >= $from && $. <= $to ) {
+				print join "", $., "\t", $_;
+			}
+		}
+		close $f;
+		#}			
+	}
+	else {
+		if($self->{article_only}) {
 			print "\n";
-			open my $f, "<", $self->{test_path} or die "не открыт файл теста $self->{test_path}: $!";
-			while(<$f>) {	
-				if( $from eq "" || $. >= $from && $. <= $to ) {
-					print join "", $., "\t", $_;
-				}
-			}
-			close $f;
-			#}			
-		}
-		else {
-			if($self->{article_only}) {
-				print "\n";
-			} else {
-				exit 1 if !$self->test;
-			}
-			
+		} else {
+			$self->test;
 		}
 		
-		$self->clear;
-		
-	});
+	}
 	
-	print "Не найдено ни одного теста\n" if $self->{count_tests} == 0;
+	$self->clear;
 	
+	$self
 }
 
 
@@ -214,10 +230,9 @@ sub compile {
 		my $detectEmptyLine = /^\s*$/;
 	
 		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
-		my $len_last = length($1) + length $2;
+		my $level = length $1;
 	
 		if($thisIsHeader && $test_write) {
-			my $level = length $1;
 			my $text = $';
 			my $header = $text;
 			$header =~ s/\s+$//g;
@@ -244,20 +259,9 @@ sub compile {
 		push @article, $_;
         
 		if(@art_pattern && $thisIsHeader) {
-			my $last = substr $_, $len_last, length $_;
-		
-			my $level = length $1;
-			
 			for my $art_pattern (@art_pattern) {
-				my $art_len = length($art_pattern);
-				
-				if(uc($art_pattern) eq uc substr $last, 0, $art_len) {
-					$test_write = $level;
-					last;
-				}
-				elsif($level <= $test_write) {
-					$test_write = 0;
-				}
+				$test_write = $level, last if $_ =~ $art_pattern;
+				$test_write = 0 if $level <= $test_write;
 			}
 		}
 		
@@ -489,10 +493,10 @@ sub test {
 		path => $self->{path},
 	);
 	$reporter->start;
-	
+
 	for my $codeFile (@tests) {
 		my $path = $codeFile->{path};
-	
+
 		# парсер каждой строки: объединяет процесс выполнения тестов и вывод отчёта
 		my $parseLine = sub {
 			my ($s, $stderr) = @_;
@@ -533,7 +537,7 @@ sub test {
 		$reporter->fail;
 	}
 	
-	return if keys(%ok) != $count_tests;
+	$self->{stop} = 1, return if keys(%ok) != $count_tests;
 	
 	return 1;
 }
@@ -541,39 +545,143 @@ sub test {
 
 # публикует в интернете: хабре и т.д.
 sub post {
-	my ($self) = @_;
-	$self
+	...
 }
 
+# возвращает директории и маски файлов
+sub bypattern {
+	my ($self) = @_;
+	my @pattern = @{$self->{pattern}};
+	
+	my $dirs = [];
+	my $re = [];
+	
+	for my $pattern (@pattern) {
+		$pattern =~ s!^\./!!;
+		my ($dir, $mask);
+		if($pattern =~ m!(.*)/!) {
+			$dir = $1;
+			$mask = $';
+			push @$dirs, $dir if !($dir ~~ $dirs);
+			$dir = quotemeta $dir;
+			$dir .= "/";
+		} else {
+			$dir = "";
+			$mask = $pattern;
+		}
+
+		my ($add, $sub);
+		$add = "[^/]*" if $mask !~ s/^\^//;
+		$sub = "[^/]*" if $mask !~ s/\$$//;
+		$mask = quotemeta $mask;
+		push @$re, qr!^$dir$add$mask$sub$!;
+	}
+	
+	@$re = qr// if !@$re;
+	@$dirs = "." if !@$dirs;
+	
+	return $dirs, $re;
+}
+
+# возвращает путь для find
+sub findpath {
+	my ($self, $re) = @_;
+	
+	return if $self->{stop};
+	
+	my $path = $File::Find::name;
+	$path =~ s!^\./!!;
+	return if $path =~ /(^|\/)\.[^.\/]/;
+		
+	for my $pattern (@$re) {
+		goto NEXT if $path =~ $pattern;
+	}
+	return;
+	NEXT:
+	
+	#return if $path !~ m!\.(miu|man|human)(?:\.[^\./]+)?$!i;
+	return if !-f $path;
+	$path
+}
 
 # обходит файлы и вызывает для каждого найденного функцию
 sub find {
 	my ($self, $code) = @_;
 		
-	my @pattern = @{$self->{pattern}};
-	@pattern = "" if !@pattern;
+	my ($dirs, $re) = $self->bypattern;
 	
-	for my $pattern (@pattern) {
+	File::Find::find({
+		no_chdir => 1,
+		wanted => sub {
+			my $path = $self->findpath($re);
+			return if !defined $path;
+			$code->($self, $path);
+		}
+	}, @$dirs);
 	
-		$pattern =~ s!^\./!!;
+	$self
+}
+
+# обходит файлы каждую секунду
+sub watch {
+	my ($self, $code) = @_;
 	
-		my $len = length $pattern;
-		my ($path) = $pattern =~ m!(.*)/!;
-		$self->{input} = $path;
-		
+	my %watch;		# file => mtime
+	my $watchdir = $self->{output} . "/.watch/";
+	
+	# сохраняет файл для сравнения
+	my $save = sub {
+		my ($path) = @_;
+		$watch{$path} = -M $path;
+		my $x = $watchdir . $path;
+		mkpath $x;
+		output $x, input $path;
+		return;
+	};
+	
+	# разбивает файл на секции
+	my $sec = sub {
+		my $f = input shift;
+		my @elm = split /^[=#]+[\t ]+(.+?)[\r\t ]*$/m, $f;
+		my $x = {};
+		for(my $i=1; $i<@elm; $i+=2) {
+			$x->{$elm[$i]} = $elm[$i+1];
+		}
+		$x
+	};
+	
+	# сравнивает файл и возвращает art_pattern-s
+	my $diff = sub {
+		my ($path) = @_;
+		my $x = $sec->($path);
+		my $y = $sec->($watchdir . $path);
+		local $_;
+		map { qr/^[=#]+\s+${\quotemeta $_}\s*$/i } grep {$x->{$_} ne $y->{$_}} keys %$x
+	};
+	
+	my ($dirs, $re) = $self->bypattern;
+	
+	while() {
 		File::Find::find({
 			no_chdir => 1,
 			wanted => sub {
-				my $path = $File::Find::name;
-				$path =~ s!^\./!!;
-				return if $pattern ne substr $path, 0, $len;
-				#return if $path !~ m!\.(miu|man|human)(?:\.[^\./]+)?$!i;
-				return if !-f $path;
+				my $path = $self->findpath($re);
+				return if !defined $path;
+				
+				my $OLD = $watch{$path};
+				
+				return $save->($path) if !defined $OLD;
 
-				$code->($path);
+				if($OLD > -M $path) {
+					$self->{art_pattern} = [ $diff->($path) ];
+					$code->($self, $path);
+					$save->($path);
+				}
 			}
-		}, $path || ".");
-		
+		}, @$dirs);
+
+		sleep 1;
+		$self->{stop} = 0;
 	}
 	
 	$self

@@ -3,8 +3,10 @@ package RrruMiu;
 
 use common::sense;
 use File::Find qw//;
+use Carp;
+$SIG{__DIE__} = sub { croak $_[0] };
 
-use EssentialMiu;
+use Miu::Essential;
 
 BEGIN {
 	select(STDERR);	$| = 1;
@@ -53,12 +55,16 @@ sub parse {
 
 	use Getopt::Long qw/:config no_ignore_case bundling/;
 
+	my $rcfile = ".rrrumiurc";
+	
+	my $ini = -e $rcfile? inputini($rcfile): {};
+	
 	my %opt = (
-		output => ".miu",
-		libdir => ".miu/lib",
-		bindir => ".miu",
+		miu_dir		=> "miu",
+		out_dir 	=> ".miu",
+		%$ini
 	);
-
+	
 	GetOptions(
 		#"p|public" => \$opt{public},
 		"a|article" => \$opt{article_only},
@@ -66,9 +72,13 @@ sub parse {
 		"i|inspect:s" => \$opt{inspect},
 		"l|log" => \$opt{log},
 		"s|stat" => \$opt{stat},
-		"o|outdir=s" => \$opt{output},
-		"u|libdir=s" => \$opt{libdir},
-		"b|bindir=s" => \$opt{bindir},
+		"m|miu_dir=s" => \$opt{miu_dir},
+		"o|out_dir=s" => \$opt{out_dir},
+		"L|lib_dir=s" => \$opt{lib_dir},
+		"T|t_dir=s" => \$opt{t_dir},
+		"R|run_dir=s" => \$opt{run_dir},
+		"G|log_dir=s" => \$opt{log_dir},
+		"A|article_dir=s" => \$opt{article_dir},
 		"c|uncolor" => \$opt{uncolor},
 		"r|reporter=s" => \$opt{reporter},
 		"B|browser=s" => \$opt{browser},
@@ -76,18 +86,29 @@ sub parse {
 		"h|help" => \$opt{help},
 	);
 
+	# дефолтные значения
+	$opt{out_dir} =~ s!/$!!;
+	my $out_dir = $opt{out_dir};
+	
+	$opt{lib_dir} 		//= "$out_dir/lib";
+	$opt{t_dir}			//= "$out_dir/t";
+	$opt{run_dir}		//= $opt{t_dir};
+	$opt{log_dir}		//= "$out_dir/log";
+	$opt{article_dir}	//= "$out_dir/mark";
+	
+	# удаляем / у директорий
+	for my $k (keys %opt) {
+		$opt{$k} =~ s!/$!! if $k =~ /_dir$/;
+	}
+	
 	# маска файлов, маска заголовков
 	$opt{pattern} = [ split /:/, shift @ARGV ];
 	$opt{art_pattern} = [@ARGV];
 
 	utf8::decode($_) for @{$opt{pattern}};
 	utf8::decode($_) for @{$opt{art_pattern}};
-	
+
 	build_patterns $opt{art_pattern};
-	
-	eval {
-		require "Text/Markdown.pm";
-	};
 	
 	%$self = (%opt, %$self);
 	
@@ -111,9 +132,13 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -i, --inspect[=n-k|l] тест в stdout. n - от строки, k - до строки. l - строка
     -l, --log             лог в stdout
     -s, --stat            статистику в stdout
-    -o, --outdir=dir      директория для скомпиллированных тестов (.t)
-    -u, --libdir=dir      директория для файлов на @@
-    -b, --bindir=dir      директория для файлов кода
+	-m, --miu_dir=dir     директория с тестами-статьями miu
+    -o, --out_dir=dir     директория вывода
+    -T, --t_dir=dir       директория для скомпиллированных тестов (.t)
+    -L, --lib_dir=dir     директория для файлов на @@...
+    -R, --run_dir=dir     текущий каталог при выполнении тестов
+	-G, --log_dir=dir     директория для логов
+    -A, --article_dir=dir директория для статей (.md)
     -c, --uncolor         отключить цвет
     -r, --reporter=name   указать формат выдачи на консоль
 	-B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
@@ -122,9 +147,6 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 ";
 		exit;
 	}
-	
-	# удаляем /
-	$self->{output} =~ s!/$!!;	
 		
 	if(!$self->{watch}) {
 		$self->find(\&prepare);
@@ -139,23 +161,21 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 sub prepare {
 	my ($self, $path) = @_;
 	
+	$self->{path} = $path;
+	$path =~ s/^${\quotemeta $self->{miu_dir}}\/?//;	# удаляем директорию
+	$self->{miu_path} = $path;
+	
 	print "$path ";
 	
-	$self->{path} = $path;
-
-	$_ = $self->{output} . "/" . $path;
+	# формируем выходные параметры
+	$_ = $path;
+	s/(?:\.miu)?\.\w+$//i;					# удаляем расширение
+	$self->{miu_file} = $_;
 	
-	mkpath $_;
-	s/(?:\.miu)?\.\w+$//i;	# удаляем расширение
-	$self->{article_path} = "$_.markdown";
-	$self->{test_path} = "$_.t";
-	$self->{html_path} = "$_.html";
-	$self->{bbcode_path} = "$_.bbcode";
 	
-	$_ = $self->{bindir} . "/" . $path;
-	mkpath $_;
-	s/(?:\.miu)?\.\w+$//i;
-	$self->{code_path} = $_;	
+	$self->{article_path} = "$self->{article_dir}/$_.markdown";
+	$self->{test_path} = "$self->{t_dir}/$_.t";
+	$self->{code_path} = "$self->{bin_dir}/$_.pl";
 	
 	$self->compile if !$self->{test};
 	
@@ -219,7 +239,7 @@ sub compile {
 	my $start_code = "\n```%s\n";
 	my $start_path_name = "";
 	my $end_code = "```\n\n";
-	
+
 	while(<$file>) {
 		
 		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), next if /^\[test(?:\s+(\w+))?\]\s*$/;
@@ -388,63 +408,62 @@ sub compile {
     $self->save;
     
 	# статья-файл
-	mkdir $`, 0744 while $self->{article_path} =~ m!/!g;
-	open my $articleFile, ">:encoding(utf8)", $self->{article_path} or die "Не могу записать файл статьи $self->{article_path}: $!";
-	print $articleFile @article;
-	close $articleFile;
+	mkpath $self->{article_path};
+	output $self->{article_path}, \@article, "Не могу записать файл статьи %s: %s";
+	output "README.md", \@article, "Не могу записать %s: %s" if $self->{readme} eq $self->{miu_path};
 	
-	if(exists $Text::{"Markdown::"}) {
+	# if(exists $Text::{"Markdown::"}) {
 	
-		my @alines;
-		my @bbcode;
-		my @code;
-		my $thisIsCode;
-		for my $line (@article) {
-			if($line =~ /\n```[a-z]\w*\n\n/i) {
-				$thisIsCode = 1;
-				next;
-			}
+		# my @alines;
+		# my @bbcode;
+		# my @code;
+		# my $thisIsCode;
+		# for my $line (@article) {
+			# if($line =~ /\n```[a-z]\w*\n\n/i) {
+				# $thisIsCode = 1;
+				# next;
+			# }
 			
-			if($line eq $end_code) {
-				push @alines, @code;
-				@code = ();
-				$thisIsCode = 0;
-				next;
-			}
+			# if($line eq $end_code) {
+				# push @alines, @code;
+				# @code = ();
+				# $thisIsCode = 0;
+				# next;
+			# }
 
-			if($thisIsCode) {
-				push @code, "\t$line";
-			} else {
-				push @alines, $line;
-			}
-		}
+			# if($thisIsCode) {
+				# push @code, "\t$line";
+			# } else {
+				# push @alines, $line;
+			# }
+		# }
 	
-		my $article = join "", @alines;
+		# my $article = join "", @alines;
 		
-		my $m = Text::Markdown->new;
-		my $html = $m->markdown($article);
+		# my $m = Text::Markdown->new;
+		# my $html = $m->markdown($article);
 		
-		# статья в формате html	
-		open my $articleFile, ">:encoding(utf8)", $self->{html_path} or die "Не могу открыть файл статьи $self->{html_path}: $!";
-		print $articleFile $html;
-		close $articleFile;
+		# # статья в формате html	
+		# open my $articleFile, ">:encoding(utf8)", $self->{html_path} or die "Не могу открыть файл статьи $self->{html_path}: $!";
+		# print $articleFile $html;
+		# close $articleFile;
 	
-		my $bbcode = $self->markdown2bbcode($html);
+		# my $bbcode = $self->markdown2bbcode($html);
 		
-		# статья в формате bbcode
-		open my $articleFile, ">:encoding(utf8)", $self->{bbcode_path} or die "Не могу открыть файл статьи $self->{bbcode_path}: $!";
-		print $articleFile $bbcode;
-		close $articleFile;
+		# # статья в формате bbcode
+		# open my $articleFile, ">:encoding(utf8)", $self->{bbcode_path} or die "Не могу открыть файл статьи $self->{bbcode_path}: $!";
+		# print $articleFile $bbcode;
+		# close $articleFile;
 		
-		$bbcode = $self->markdown2bbcode($html, "LOR");
-		# статья в формате lorcode
-		$_ = $self->{bbcode_path};
-		s!\.\w+$!.lorcode!;
-		open my $articleFile, ">:encoding(utf8)", $_ or die "Не могу открыть файл статьи $_: $!";
-		print $articleFile $bbcode;
-		close $articleFile;
+		# $bbcode = $self->markdown2bbcode($html, "LOR");
+		# # статья в формате lorcode
+		# $_ = $self->{bbcode_path};
+		# s!\.\w+$!.lorcode!;
+		# open my $articleFile, ">:encoding(utf8)", $_ or die "Не могу открыть файл статьи $_: $!";
+		# print $articleFile $bbcode;
+		# close $articleFile;
 		
-	}
+	# }
 	
 	
 	
@@ -464,12 +483,10 @@ sub test {
 
 	my $path = $self->{test_path};
 	
-	my $log_path = $path;
-	$log_path =~ s!\.t(\.\w+)?$!$1.log!;
+	my $log_path = mkpath "$self->{log_dir}/$self->{miu_file}.log";
 	open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
 	
-	my $stat_path = $path;
-	$stat_path =~ s!\.t(\.\w+)?$!$1.stat!;
+	my $stat_path = mkpath "$self->{log_dir}/$self->{miu_file}.stat";
 	open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
 
 	my $current_test;
@@ -478,11 +495,11 @@ sub test {
 	my %fail = ();
 	my $count_tests = $self->{count_tests};
 	$self->{reporter} //= "Dot";
-	my $reporter = "Reporter/Miu" . ucfirst(lc $self->{reporter}) . ".pm";
+	my $reporter = "Miu/Reporter/" . ucfirst(lc $self->{reporter}) . ".pm";
 	eval {require $reporter};
-	print("нет обозревателя $self->{reporter}:\n$@\n"), $self->{reporter} = "dot", require "Reporter/MiuDot.pm" if $@;
+	print("нет обозревателя $self->{reporter}:\n$@\n"), $self->{reporter} = "dot", require "Miu/Reporter/Dot.pm" if $@;
 	
-	my $class = "Reporter::Miu" . ucfirst(lc $self->{reporter});
+	my $class = "Miu::Reporter::" . ucfirst(lc $self->{reporter});
 	
 	my $reporter = $class->new(
 		uncolor=>$self->{uncolor}, 
@@ -553,23 +570,23 @@ sub bypattern {
 	my ($self) = @_;
 	my @pattern = @{$self->{pattern}};
 	
+	my $miu_dir = $self->{miu_dir};
 	my $dirs = [];
 	my $re = [];
 	
 	for my $pattern (@pattern) {
-		$pattern =~ s!^\./!!;
 		my ($dir, $mask);
 		if($pattern =~ m!(.*)/!) {
-			$dir = $1;
+			$dir = "$miu_dir/$1/";
 			$mask = $';
 			push @$dirs, $dir if !($dir ~~ $dirs);
-			$dir = quotemeta $dir;
-			$dir .= "/";
 		} else {
-			$dir = "";
+			$dir = "$miu_dir/";
 			$mask = $pattern;
 		}
 
+		$dir = quotemeta $dir;
+		
 		my ($add, $sub);
 		$add = "[^/]*" if $mask !~ s/^\^//;
 		$sub = "[^/]*" if $mask !~ s/\$$//;
@@ -578,7 +595,7 @@ sub bypattern {
 	}
 	
 	@$re = qr// if !@$re;
-	@$dirs = "." if !@$dirs;
+	@$dirs = $miu_dir if !@$dirs;
 	
 	return $dirs, $re;
 }
@@ -590,16 +607,17 @@ sub findpath {
 	return if $self->{stop};
 	
 	my $path = $File::Find::name;
-	$path =~ s!^\./!!;
-	return if $path =~ /(^|\/)\.[^.\/]/;
-		
+	
+	#$path =~ s!^\./!!;
+	# если название какой-то директории с точки начинается, то в ней не смотрим
+	return if $path =~ /(^|\/)\./;
+	
 	for my $pattern (@$re) {
 		goto NEXT if $path =~ $pattern;
 	}
 	return;
 	NEXT:
 	
-	#return if $path !~ m!\.(miu|man|human)(?:\.[^\./]+)?$!i;
 	return if !-f $path;
 	$path
 }
@@ -627,13 +645,13 @@ sub watch {
 	my ($self, $code) = @_;
 	
 	my %watch;		# file => mtime
-	my $watchdir = $self->{output} . "/.watch/";
+	my $watchdir = $self->{out_dir} . "/.watch";
 	
 	# сохраняет файл для сравнения
 	my $save = sub {
 		my ($path) = @_;
 		$watch{$path} = -M $path;
-		my $x = $watchdir . $path;
+		my $x = "$watchdir/$path";
 		mkpath $x;
 		output $x, input $path;
 		return;
@@ -654,7 +672,7 @@ sub watch {
 	my $diff = sub {
 		my ($path) = @_;
 		my $x = $sec->($path);
-		my $y = $sec->($watchdir . $path);
+		my $y = $sec->("$watchdir/$path");
 		local $_;
 		map { qr/^[=#]+\s+${\quotemeta $_}\s*$/i } grep {$x->{$_} ne $y->{$_}} keys %$x
 	};
@@ -719,17 +737,16 @@ sub clear {
 sub drv {
 	my ($self, $lang) = @_;
 	
-	my $a = "Miu" . ucfirst($lang);
-	require "$a.pm";
+	require "Miu/File/" . ucfirst($lang) . ".pm";
 	
-	$a
+	"Miu::File::" . ucfirst $lang
 }
 
 # переходим на файл кода
 sub tocode {
 	my ($self, $path) = @_;
 
-    if($path !~ /^\.?\//) { $path = "$self->{libdir}/$path"; }
+    if($path !~ /^\.?\//) { $path = "$self->{lib_dir}/$path"; }
     elsif($path =~ s!^./+!!) {}
 	
 	$self->{codeFile} = $self->{codeFiles}{$path} //= $self->drv("file")->new(path => $path, is_file_code=>1);
@@ -749,7 +766,7 @@ sub totest {
 	my $drv = $self->drv($lang);
 	my $path = $self->{test_path} . $drv->test_ext;
 	
-	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path, output => $self->{output});
+	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path, out_dir => $self->{out_dir});
 	
 	$self
 }
@@ -763,90 +780,90 @@ sub toinit {
 
 
 
-# переводит текст в bbcode
-sub markdown2bbcode {
-	my ($self, $html, $variant) = @_;
-	local $_ = $html;
+# # переводит текст в bbcode
+# sub markdown2bbcode {
+	# my ($self, $html, $variant) = @_;
+	# local $_ = $html;
 	
-	# Smartypants operates first so that attributes (e.g., URLs) don't get converted
-	if (1) {
-		if (eval { require "Text/SmartyPants.pm" }) {
-			$_ = Text::SmartyPants::process($_, 2); 
-		}
-		elsif (eval { require "Text/Typography.pm" }) {
-			$_ = Text::Typography::typography($_, 2); 
-		}
-	}
+	# # Smartypants operates first so that attributes (e.g., URLs) don't get converted
+	# if (1) {
+		# if (eval { require "Text/SmartyPants.pm" }) {
+			# $_ = Text::SmartyPants::process($_, 2); 
+		# }
+		# elsif (eval { require "Text/Typography.pm" }) {
+			# $_ = Text::Typography::typography($_, 2); 
+		# }
+	# }
 
-	# Simple elements
-	my %html2bb = (
-		strong     => 'b',
-		em         => 'i',
-		blockquote => 'quote',
-		hr         => 'hr',
-		u		   => 'u',
-		br         => 'br'
-	);
-	while (my($html, $bb) = each %html2bb) {
-		s{<(/|)$html[^>]*>}{[$1$bb]}g;
-	}
+	# # Simple elements
+	# my %html2bb = (
+		# strong     => 'b',
+		# em         => 'i',
+		# blockquote => 'quote',
+		# hr         => 'hr',
+		# u		   => 'u',
+		# br         => 'br'
+	# );
+	# while (my($html, $bb) = each %html2bb) {
+		# s{<(/|)$html[^>]*>}{[$1$bb]}g;
+	# }
 	
-	# Convert links
-	s{<a
-		[^>]*?       # random attributes we don't care about
-		href="(.+?)" # target
-		[^>]*?       # more random attributes we don't care about
-	>
-		(.+?)        # text
-		</a>
-	}{[url="$1"]$2\[/url]}xgi;
+	# # Convert links
+	# s{<a
+		# [^>]*?       # random attributes we don't care about
+		# href="(.+?)" # target
+		# [^>]*?       # more random attributes we don't care about
+	# >
+		# (.+?)        # text
+		# </a>
+	# }{[url="$1"]$2\[/url]}xgi;
 
-	# Undo paragraphs elements
-	s{</?p>}{}g;
+	# # Undo paragraphs elements
+	# s{</?p>}{}g;
 
-	s{\[code\]}{[ code]}g;
+	# s{\[code\]}{[ code]}g;
 	
-	# code
-	s{<pre><code lang="(\w+)">}      {[code=$1]}gi;
-	s{<pre><code>}      {[code=perl]}gi;
-	s{</code></pre>}    {[/code]}gi;
+	# # code
+	# s{<pre><code lang="(\w+)">}      {[code=$1]}gi;
+	# s{<pre><code>}      {[code=perl]}gi;
+	# s{</code></pre>}    {[/code]}gi;
 	
 	
-	if($variant eq "LOR") {
-		# convert h1...h6
-		s{<h(\d)>}{[strong]}ig;
-		s{</h(\d)>}{[/strong]}ig;
+	# if($variant eq "LOR") {
+		# # convert h1...h6
+		# s{<h(\d)>}{[strong]}ig;
+		# s{</h(\d)>}{[/strong]}ig;
 		
-		# code inline
-		s{<code>\s*}   {[inline]}g;
-		s{\s*</code>} {[/inline]}g;
+		# # code inline
+		# s{<code>\s*}   {[inline]}g;
+		# s{\s*</code>} {[/inline]}g;
 		
-	}
-	else {
-		# convert h1...h6
-		s{<h(\d)>}{"[size=" . int(100 / 6 * (6-$1) + 100) . "]"}ige;
-		s{</h(\d)>}{[/size]}ig;
+	# }
+	# else {
+		# # convert h1...h6
+		# s{<h(\d)>}{"[size=" . int(100 / 6 * (6-$1) + 100) . "]"}ige;
+		# s{</h(\d)>}{[/size]}ig;
 		
-		# code inline
-		s{<code>\s*}   {[color=red]}g;
-		s{\s*</code>} {[/color]}g;
-	}
+		# # code inline
+		# s{<code>\s*}   {[color=red]}g;
+		# s{\s*</code>} {[/color]}g;
+	# }
 
 	
 
-	# списки
-	s{<ul>}     {[list]}g;
-	s{<ol>}     {[list=1]}g;
-	s{</[uo]l>} {[/list]}g;
-	s{<li>}     {[*]}g;
-	s{</li>}    {}g;
+	# # списки
+	# s{<ul>}     {[list]}g;
+	# s{<ol>}     {[list=1]}g;
+	# s{</[uo]l>} {[/list]}g;
+	# s{<li>}     {[*]}g;
+	# s{</li>}    {}g;
 
 
-	# Decode HTML entities
-	if(eval { require "HTML/Entities.pm" }) {
-		$_ = HTML::Entities::decode_entities($_);
-	}
-	return $_;
-}
+	# # Decode HTML entities
+	# if(eval { require "HTML/Entities.pm" }) {
+		# $_ = HTML::Entities::decode_entities($_);
+	# }
+	# return $_;
+# }
 
 1;

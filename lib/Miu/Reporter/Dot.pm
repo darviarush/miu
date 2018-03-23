@@ -1,8 +1,8 @@
-package Reporter::MiuDot;
+package Miu::Reporter::Dot;
 # обозначает пройденные тесты точками, непройденные - E, ошибки - F
 
 use common::sense;
-use EssentialMiu;
+use Miu::Essential;
 
 # конструктор
 sub new {
@@ -59,7 +59,7 @@ sub fail {
 sub colored {
 	my ($self, $s, @color) = @_;
 	return $s if $self->{uncolor};
-	EssentialMiu::colored($s, @color);
+	Miu::Essential::colored($s, @color);
 }
 
 1;

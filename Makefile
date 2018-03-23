@@ -10,7 +10,7 @@ remote:
 		git remote add origin git@bitbucket.org:darij/miu.git;	git remote add github git@github.com:darviarush/miu.git
 
 README.md: miu/00-miu.miu.pl
-		(cd miu && miu 00:10 && cp .miu/00-miu.markdown ../README.md && cp .miu/*.markdown ../mark)
+		miu 00:10
 
 dist: README.md cpan
 		git add .
@@ -19,16 +19,16 @@ dist: README.md cpan
 		git push github master
 		
 clean:
-		rm -r README.md miu/.miu/
+		rm -r README.md t mark .miu
 
 test:
-		cd miu && miu 00:10
+		miu 00:10
 		
 pl:
-		cd miu && miu 00
+		miu 00
 		
 js:
-		cd miu && miu 10
+		miu 10
 
 		
 cpan:

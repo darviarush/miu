@@ -1,7 +1,7 @@
-package Reporter::MiuList;
+package Miu::Reporter::List;
 # тесты в виде списка с относительным временем
 
-use base Reporter::MiuDot;
+use base Miu::Reporter::Dot;
 
 use common::sense;
 use Time::HiRes qw/time/;

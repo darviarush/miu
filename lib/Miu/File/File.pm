@@ -1,4 +1,4 @@
-package MiuFile;
+package Miu::File::File;
 # файл теста или кода в miu. Базовый для языковых файлов
 
 use common::sense;

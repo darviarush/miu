@@ -1,4 +1,4 @@
-package ResultMiu;
+package Miu::Result;
 # результат парсинга строки вывода теста
 
 use common::sense;

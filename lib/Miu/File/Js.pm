@@ -1,10 +1,10 @@
-package MiuJs;
+package Miu::File::Js;
 # врайтер Javascript
 
-use base MiuTestFile;
+use base Miu::File::Test;
 
 use common::sense;
-use EssentialMiu;
+use Miu::Essential;
 
 # конструктор
 sub new {
@@ -26,7 +26,7 @@ sub test_ext {
 # возвращает путь к интерпретатору для tap-парсера
 sub exec_param {
 	my ($self, $miu) = @_;	
-	return EssentialMiu::executor("node"), $self->{path};
+	return Miu::Essential::executor("node"), $self->{path};
 }
 
 # возвращает символ для регулярки

@@ -1,10 +1,10 @@
-package MiuJsb;
+package Miu::File::Jsb;
 # врайтер Javascript
 
-use base MiuJs;
+use base Miu::File::Js;
 
 use common::sense;
-use EssentialMiu;
+use Miu::Essential;
 
 # конструктор
 sub new {

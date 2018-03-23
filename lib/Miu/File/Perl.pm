@@ -1,11 +1,11 @@
-package MiuPerl;
+package Miu::File::Perl;
 # драйвер тестов для языка perl
 
-use base MiuTestFile;
+use base Miu::File::Test;
 
 use common::sense;
 
-use EssentialMiu;
+use Miu::Essential;
 
 
 # конструктор
@@ -29,7 +29,7 @@ sub test_ext {
 # возвращает путь к интерпретатору для tap-парсера
 sub exec_param {
 	my ($self, $miu) = @_;
-	return $^X, '-I' . $miu->{libdir}, $self->{path};
+	return $^X, '-I' . $miu->{lib_dir}, $self->{path};
 }
 
 # возвращает символ комментария для регулярки
@@ -56,8 +56,8 @@ sub before_save {
 	my ($self) = @_;
 	
 	# дополняем тест
-	my $output = $self->{output};
-	$output =~ s![\"]!\\$&!g;
+	my $out_dir = $self->{out_dir};
+	$out_dir =~ s![\"]!\\$&!g;
 
 	my $count_tests = $self->{count_tests};
 	die "не указано количество тестов" if !defined $count_tests;
@@ -81,7 +81,7 @@ my ($_f, $_ret);
 
 sub ___std {
 my $fh = shift;
-open $_f, ">&", $fh; close $fh; open $fh, ">", "' . $output . '/miu-tmp-fh";
+open $_f, ">&", $fh; close $fh; open $fh, ">", "' . $out_dir . '/miu-tmp-fh";
 }
 
 sub ___res {
@@ -91,7 +91,7 @@ open $fh, ">&", $_f;
 }
 
 sub ___get {
-open my $f, "' . $output . '/miu-tmp-fh";
+open my $f, "' . $out_dir . '/miu-tmp-fh";
 read $f, my $buf, -s $f;
 close $f;
 $buf

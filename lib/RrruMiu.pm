@@ -83,6 +83,7 @@ sub parse {
 		"r|reporter=s" => \$opt{reporter},
 		"B|browser=s" => \$opt{browser},
 		"w|watch" => \$opt{watch},
+		"M|mk_config" => \$opt{mk_config},
 		"h|help" => \$opt{help},
 	);
 
@@ -132,22 +133,33 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -i, --inspect[=n-k|l] тест в stdout. n - от строки, k - до строки. l - строка
     -l, --log             лог в stdout
     -s, --stat            статистику в stdout
-	-m, --miu_dir=dir     директория с тестами-статьями miu
+    -m, --miu_dir=dir     директория с тестами-статьями miu
     -o, --out_dir=dir     директория вывода
     -T, --t_dir=dir       директория для скомпиллированных тестов (.t)
     -L, --lib_dir=dir     директория для файлов на @@...
     -R, --run_dir=dir     текущий каталог при выполнении тестов
-	-G, --log_dir=dir     директория для логов
+    -G, --log_dir=dir     директория для логов
     -A, --article_dir=dir директория для статей (.md)
     -c, --uncolor         отключить цвет
     -r, --reporter=name   указать формат выдачи на консоль
-	-B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
+    -B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
     -w, --watch           выполнять тесты из изменившейся главы
+    -M, --mk_config       созать конфиг
     -h, --help            эта справка
 ";
-		exit;
+		return;
 	}
-		
+	
+	if($self->{mk_config}) {
+		print("конфиг уже есть\n"), return if -e ".rrrumiurc";
+		require 'Cwd.pm';
+		my $f = Cwd::abs_path(__FILE__);
+		$f =~ s!/lib/RrruMiu.pm$!/.rrrumiurc!;
+		output ".rrrumiurc", input $f;
+		print "конфиг создан\n";
+		return;
+	}
+	
 	if(!$self->{watch}) {
 		$self->find(\&prepare);
 		print "Не найдено ни одного теста\n" if $self->{count_tests} == 0;

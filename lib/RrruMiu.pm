@@ -2,6 +2,7 @@
 package RrruMiu;
 
 use common::sense;
+use Cwd;
 use File::Find qw//;
 use Carp;
 $SIG{__DIE__} = sub { croak $_[0] };
@@ -541,6 +542,7 @@ sub test {
 		};
 		
 		# выполняем тест-файлы в отдельных процессах. На каждую строку вывода должна запускаться $parseLine
+		chdir $self->{run_dir};
 		$codeFile->exec($self, $parseLine);		
 	}
 	

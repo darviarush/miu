@@ -2,7 +2,8 @@
 package RrruMiu;
 
 use common::sense;
-use Cwd;
+use Cwd qw//;
+use Guard;
 use File::Find qw//;
 use Carp;
 $SIG{__DIE__} = sub { croak $_[0] };
@@ -153,7 +154,6 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 	
 	if($self->{mk_config}) {
 		print("конфиг уже есть\n"), return if -e ".rrrumiurc";
-		require 'Cwd.pm';
 		my $f = Cwd::abs_path(__FILE__);
 		$f =~ s!/lib/RrruMiu.pm$!/.rrrumiurc!;
 		output ".rrrumiurc", input $f;
@@ -554,8 +554,11 @@ sub test {
 		};
 		
 		# выполняем тест-файлы в отдельных процессах. На каждую строку вывода должна запускаться $parseLine
+		my $save_cwd = &Cwd::getcwd;
+		my $guard_cwd = guard {	chdir $save_cwd };
 		chdir $self->{run_dir};
-		$codeFile->exec($self, $parseLine);		
+		$codeFile->exec($self, $parseLine);
+		undef $guard_cwd;
 	}
 	
 	close $log;

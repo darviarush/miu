@@ -64,6 +64,8 @@ sub parse {
 	my %opt = (
 		miu_dir		=> "miu",
 		out_dir 	=> ".miu",
+		menu 		=> 1,
+		submenu 	=> 1,
 		%$ini
 	);
 	
@@ -79,9 +81,12 @@ sub parse {
 		"L|lib_dir=s" => \$opt{lib_dir},
 		"T|t_dir=s" => \$opt{t_dir},
 		"R|run_dir=s" => \$opt{run_dir},
+		"I|include_dirs=s" => \$opt{include_dirs},
 		"G|log_dir=s" => \$opt{log_dir},
 		"A|article_dir=s" => \$opt{article_dir},
 		"c|uncolor" => \$opt{uncolor},
+		"N|menu" => \$opt{menu},
+		"S|submenu" => \$opt{submenu},
 		"r|reporter=s" => \$opt{reporter},
 		"B|browser=s" => \$opt{browser},
 		"w|watch" => \$opt{watch},
@@ -95,9 +100,13 @@ sub parse {
 	
 	$opt{lib_dir} 		//= "$out_dir/lib";
 	$opt{t_dir}			//= "$out_dir/t";
-	$opt{run_dir}		//= $opt{t_dir};
+	$opt{run_dir}		//= $opt{lib_dir};
+	$opt{include_dirs}	//= $opt{lib_dir};
 	$opt{log_dir}		//= "$out_dir/log";
 	$opt{article_dir}	//= "$out_dir/mark";
+	
+	# преобразум пути
+	$opt{include_dirs} = [ map { mkpath "$_/"; Cwd::abs_path($_) } split /,/, $opt{include_dirs} ];
 	
 	# удаляем / у директорий
 	for my $k (keys %opt) {
@@ -128,7 +137,7 @@ sub run {
 rrrumiu компилирует файлы в код, тесты и статьи. Выполняет тесты
 
 маски_файлов задаются через \":\"
-		
+
 ОПЦИИ
     -a, --article         не выполнять тесты: только компилировать
     -t, --test            не компилировать: выполнить тесты
@@ -142,6 +151,8 @@ rrrumiu компилирует файлы в код, тесты и статьи.
     -R, --run_dir=dir     текущий каталог при выполнении тестов
     -G, --log_dir=dir     директория для логов
     -A, --article_dir=dir директория для статей (.md)
+    -N, --menu            создавать ссылки в реадме-файле
+    -S, --submenu         создавать оглавление в статьях
     -c, --uncolor         отключить цвет
     -r, --reporter=name   указать формат выдачи на консоль
     -B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
@@ -162,7 +173,7 @@ rrrumiu компилирует файлы в код, тесты и статьи.
 	}
 	
 	if(!$self->{watch}) {
-		$self->find(\&prepare);
+		$self->mainfind(\&prepare);
 		print "Не найдено ни одного теста\n" if $self->{count_tests} == 0;
 		return;
 	}
@@ -420,6 +431,32 @@ sub compile {
     # заполняем файлы кода и тестов, очищаем codeFile и codeFiles
     $self->save;
     
+	if($self->{menu} && $self->{readme} eq $self->{miu_path}) {
+		my $article_dir = $self->{article_dir};
+		push @article, "\n\n== Документация\n\n";
+
+		find {
+			return if !-f $_;
+			return if input($_) !~ /^([=#])+[ \t]+(.*)/m;			
+			push @article, "1. [$2]($article_dir/$_)\n";
+		}, $self->{miu_dir};
+	}
+	
+	if($self->{submenu}) {
+		local $_;
+		my @menu;
+		my $i=0;
+		my $lineno = 0;
+		my $save;
+		for my $line (@article) {
+			if($line =~ /^#+[ \t]+(.*)/) {
+				push @menu, "1. [$1](#$1)\n";
+				$save = $lineno if ++$i == 2;
+			}
+		} continue {$lineno++}
+		splice @article, $save+1, 0, @menu if $save;
+	}
+	
 	# статья-файл
 	mkpath $self->{article_path};
 	output $self->{article_path}, \@article, "Не могу записать файл статьи %s: %s";
@@ -554,7 +591,7 @@ sub test {
 		};
 		
 		# выполняем тест-файлы в отдельных процессах. На каждую строку вывода должна запускаться $parseLine
-		my $save_cwd = &Cwd::getcwd;
+		my $save_cwd = &Cwd::cwd;
 		my $guard_cwd = guard {	chdir $save_cwd };
 		chdir $self->{run_dir};
 		$codeFile->exec($self, $parseLine);
@@ -640,7 +677,7 @@ sub findpath {
 }
 
 # обходит файлы и вызывает для каждого найденного функцию
-sub find {
+sub mainfind {
 	my ($self, $code) = @_;
 		
 	my ($dirs, $re) = $self->bypattern;
@@ -783,7 +820,16 @@ sub totest {
 	my $drv = $self->drv($lang);
 	my $path = $self->{test_path} . $drv->test_ext;
 	
-	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(path => $path, out_dir => $self->{out_dir});
+	mkpath $path;
+	output $path, "";
+	my $abspath = Cwd::abs_path($path);
+	my $rundir = "^" . quotemeta Cwd::abs_path($self->{run_dir});
+	
+	
+	$self->{codeFile} = $self->{codeFiles}{$path} //= $drv->new(
+		path => ($abspath !~ $rundir? $abspath: $path),
+		out_dir => $self->{out_dir}
+	);
 	
 	$self
 }

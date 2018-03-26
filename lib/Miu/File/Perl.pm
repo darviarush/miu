@@ -29,7 +29,7 @@ sub test_ext {
 # возвращает путь к интерпретатору для tap-парсера
 sub exec_param {
 	my ($self, $miu) = @_;
-	return $^X, '-I' . $miu->{lib_dir}, $self->{path};
+	return $^X, (map {('-I', minusroot Cwd::abs_path($miu->{run_dir}), $_)} @{ $miu->{include_dirs} }), $self->{path};
 }
 
 # возвращает символ комментария для регулярки

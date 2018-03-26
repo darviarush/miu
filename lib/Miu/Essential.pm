@@ -3,9 +3,10 @@ package Miu::Essential;
 
 use common::sense;
 use Term::ANSIColor qw/colored color/;
+use File::Find qw//;
 
 # импортирует в вызывавший модуль функции
-my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color executor mkpath input output inputini/);
+my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color executor mkpath input output inputini find minusroot/);
 sub import {
 	my $self = shift;
 	
@@ -119,6 +120,27 @@ sub inputini ($) {
 	}
 	continue {$i++}
 	$x
+}
+
+# поиск файлов
+sub find (&@) {
+	my ($sub, @paths) = @_;
+	File::Find::find({
+		no_chdir => 1,
+		wanted => sub {
+			local $_ = $File::Find::name;
+			$sub->();
+		}
+	}, @paths);
+}
+	
+# удаляет рутовую директорию из пути
+sub minusroot ($$) {
+	my ($root, $path) = @_;
+	$root =~ s!/?$!/!;
+	my $reroot = quotemeta $root;
+	die "не могу вычесть `$root` из `$path`" if $path !~ s!^$reroot!!;
+	$path
 }
 
 1;

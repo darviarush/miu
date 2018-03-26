@@ -24,6 +24,8 @@ requires 'SelectSaver'; # == 1.02
 requires 'Socket'; # == 2.018
 requires 'Symbol'; # == 1.07
 requires 'Term::ANSIColor'; # == 4.03
+requires 'Term::Cap'; # == 1.15
+requires 'Term::Screen'; # == 1.06
 requires 'Time::HiRes'; # == 1.9726
 requires 'XSLoader'; # == 0.20
 requires 'base'; # == 2.22

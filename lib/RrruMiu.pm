@@ -10,6 +10,14 @@ $SIG{__DIE__} = sub { croak $_[0] };
 
 use Miu::Essential;
 
+binmode STDIN,  ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+for my $arg (@ARGV) {
+	utf8::decode($arg);
+}
+
 BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
@@ -117,9 +125,6 @@ sub parse {
 	$opt{pattern} = [ split /:/, shift @ARGV ];
 	$opt{art_pattern} = [@ARGV];
 
-	utf8::decode($_) for @{$opt{pattern}};
-	utf8::decode($_) for @{$opt{art_pattern}};
-
 	build_patterns $opt{art_pattern};
 	
 	%$self = (%opt, %$self);
@@ -196,6 +201,25 @@ sub prepare {
 	s/(?:\.miu)?\.\w+$//i;					# удаляем расширение
 	$self->{miu_file} = $_;
 	
+	if($self->{log}) {
+		my $log_file = "$self->{log_dir}/$self->{miu_file}.log";
+		if(-e $log_file) {
+			print input $log_file;
+		} else {
+			print "лог-файл не сформирован\n";
+		}
+		return $self;
+	}
+	
+	if($self->{stat}) {
+		my $stat_file = "$self->{log_dir}/$self->{miu_file}.stat";
+		if(-e $stat_file) {
+			print input $stat_file;
+		} else {
+			print "стат-файл не сформирован\n";
+		}
+		return $self;
+	}
 	
 	$self->{article_path} = "$self->{article_dir}/$_.markdown";
 	$self->{test_path} = "$self->{t_dir}/$_.t";
@@ -534,10 +558,10 @@ sub test {
 	my $path = $self->{test_path};
 	
 	my $log_path = mkpath "$self->{log_dir}/$self->{miu_file}.log";
-	open my $log, ">", $log_path or die "Не могу открыть лог $log_path: $!";
+	open my $log, ">:utf8", $log_path or die "Не могу открыть лог $log_path: $!";
 	
 	my $stat_path = mkpath "$self->{log_dir}/$self->{miu_file}.stat";
-	open my $stat, ">", $stat_path or die "Не могу открыть лог $stat_path: $!";
+	open my $stat, ">:utf8", $stat_path or die "Не могу открыть лог $stat_path: $!";
 
 	my $current_test;
 	my $current_line;
@@ -568,26 +592,28 @@ sub test {
 		my $parseLine = sub {
 			my ($s, $stderr) = @_;
 			
+			utf8::decode($s);
+			
 			my $result = $codeFile->parse($s, $stderr);
 			
 			if( $result->is_test ) {
 				$current_test = $codeFile->{path} . "-" . $result->num;
 				$current_line = $self->{lines}{$current_test};
-				print "$current_line: " if $self->{log} || $self->{stat};
+				print $stat "$current_line: ";	# if $self->{log} || $self->{stat};
+				print $log "$current_line: ";
 			}
 			
-			$reporter->report($result, $current_line) if !$self->{log} && !$self->{stat};
+			$reporter->report($result, $current_line);# if !$self->{log} && !$self->{stat};
 			
 			$ok{$current_test} = $current_line if $result->is_ok;
 			$fail{$current_test} = $current_line if $result->is_fail;
 			
 			
 			# по логам
-			print $stat "$result->{type} $s\n";
+			$s = $codeFile->mapiferror($s, $self);
+			my $s_stat = ($self->{uncolor}? $result->{type}: colored($result->{type}, "cyan")) . " $s\n";
+			print $stat $s_stat;
 			print $log "$s\n";
-			
-			print(($self->{uncolor}? $result->{type}: colored($result->{type}, "cyan")) . " $s\n") if $self->{stat};
-			print $codeFile->mapiferror($s, $self) . "\n" if $self->{log};
 		};
 		
 		# выполняем тест-файлы в отдельных процессах. На каждую строку вывода должна запускаться $parseLine

@@ -17,6 +17,7 @@ sub new {
 sub start {
 	my $self = shift;
 	$self->{time} = time();
+	print "\n";
 }
 
 # выводит сообщение на консоль по каждой строке
@@ -24,9 +25,12 @@ sub report {
 	my ($self, $result, $current_line) = @_;
 	my $time;
 	
-	print $result->raw . "\n" if $result->is_header;
+	# 🕅
+	print $self->colored("§" x length(($result->raw =~ /^([#=]+)/)[0]), "cyan") . " ". $self->colored($result->rem,  "bold", "black") . "\n" if $result->is_header;
 	print $self->colored("   ✓ ", "green") . $self->gettime . $result->is_string . "\n" if $result->is_ok;
 	print $self->colored("   × ", "red") . $self->gettime . $result->is_string . "\n" if $result->is_fail;
+	
+	print $self->colored("    · ", "yellow") . $self->colored($result->raw, "bold black") ."\n" if $result->is_unknown;
 	
 }
 

@@ -260,9 +260,9 @@ document	// [object HTMLDocument]
 	
 == Какие файлы создаёт miu
 
-miu ищет файлы в директории **./miu**.
+miu ищет файлы в директории **miu/miu**.
 	
-	`cd ..; miu -c miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n
+	`cd ..; miu -c miu/miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n
 	
 После запуска miu создат выходной каталог __.miu__ в текущей директории.  
 Вы можете использовать ключ -o, чтобы изменить его.

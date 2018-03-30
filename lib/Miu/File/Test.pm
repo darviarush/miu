@@ -55,6 +55,20 @@ sub exec {
 	$self
 }
 
+# распознаёт строку и преобразует из неё
+sub __from_string ($) {
+	my ($s) = @_;
+	return $s if $s !~ s/^'//;
+	if($s =~ /\\'\s*$/) {
+		$s .= "…";
+	} else {
+		$s =~ s/'\s*$//;
+	}
+	
+	$s =~ s/\\'/'/g;
+	$s
+}
+
 # парсит строку и возвращает результат для TAP (Test Anithing Protocol)
 sub parse {
 	my ($self, $s, $stderr) = @_;
@@ -66,12 +80,17 @@ sub parse {
 	return Miu::Result->new($s, "ok", rem=>$', num=>$1) if /^ok (\d+) (- )?/;
 	return Miu::Result->new($s, "fail", rem=>$', num=>$1) if /^not ok (\d+) (- )?/;
 	return Miu::Result->new($s, "plan", pass=>$1, count=>$2) if /^(\d+)\.\.(\d+)/;
+	
+	
+	
+	return Miu::Result->new($s, "got", rem=>__from_string $') if /^#[ \t]+got: /;
+	return Miu::Result->new($s, "expected", rem=>__from_string $') if /^#[ \t]+expected: /;
+	
 	return Miu::Result->new($s, "comment", rem=>$') if /^#[ \t]/;
 	return Miu::Result->new($s, "header", rem=>$') if /^=+[ \t]+/;
 	
 	return Miu::Result->new($s, "unknown");
 }
-
 
 
 1;

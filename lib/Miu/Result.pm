@@ -75,10 +75,22 @@ sub is_string {
 	$self->{rem} // $self->{raw}
 }
 
+# ошибка в тесте: получено значение
+sub is_got {
+	my ($self) = @_;
+	$self->{type} eq "got"
+}
+
+# ошибка в тесте: требуется значение
+sub is_expected {
+	my ($self) = @_;
+	$self->{type} eq "expected"
+}
+
 # комментарий Test::More
 sub is_comment {
 	my ($self) = @_;
-	$self->{type} eq "comment"
+	$self->{type} =~ /^(comment|got|expected)$/n
 }
 
 # план 1..2

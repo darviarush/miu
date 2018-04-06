@@ -2,11 +2,15 @@
 package RrruMiu;
 
 use common::sense;
+
+BEGIN {
+	require Carp;
+	$SIG{__DIE__} = sub { Carp::croak($_[0]) };
+}
+
 use Cwd qw//;
 use Guard;
-use File::Find qw//;
-use Carp;
-$SIG{__DIE__} = sub { croak $_[0] };
+require File::Find;
 
 use Miu::Essential;
 

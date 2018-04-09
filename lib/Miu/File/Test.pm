@@ -73,6 +73,7 @@ sub __from_string ($) {
 sub __from_comment ($) {
 	my ($s) = @_;
 	$s =~ s/\\#/#/g;
+	$s =~ s/\\\\n/\\n/g;
 	$s
 }
 

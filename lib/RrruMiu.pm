@@ -116,6 +116,13 @@ sub parse {
 	# преобразум пути
 	$opt{include_dirs} = [ map { mkpath "$_/"; Cwd::abs_path($_) } split /,/, $opt{include_dirs} ];
 	
+	mkpath "$opt{out_dir}/";
+	mkpath "$opt{lib_dir}/";
+	mkpath "$opt{t_dir}/";
+	mkpath "$opt{run_dir}/";
+	mkpath "$opt{log_dir}/";
+	mkpath "$opt{article_dir}/";
+	
 	# удаляем / у директорий
 	for my $k (keys %opt) {
 		$opt{$k} =~ s!/$!! if $k =~ /_dir$/;
@@ -454,16 +461,19 @@ sub compile {
 	
     # заполняем файлы кода и тестов, очищаем codeFile и codeFiles
     $self->save;
-    
+	
 	if($self->{menu} && $self->{readme} eq $self->{miu_path}) {
 		my $article_dir = $self->{article_dir};
 		push @article, "\n\n== Документация\n\n";
-
+		
 		find {
 			return if !-f $_;
-			return if input($_) !~ /^([=#])+[ \t]+(.*)/m;			
-			push @article, "1. [$2]($article_dir/$_)\n";
-		}, $self->{miu_dir};
+			return if input($_) !~ /^([=#])+[ \t]+(.*)/m;
+			my $head = $2;
+			$head =~ s!\s*$!!g;
+			s!(?:\.miu)?\.\w+$!.markdown!;
+			push @article, "1. [$head]($article_dir/$_)\n";
+		} $self->{miu_dir};
 	}
 	
 	if($self->{submenu}) {
@@ -474,7 +484,9 @@ sub compile {
 		my $save;
 		for my $line (@article) {
 			if($line =~ /^#+[ \t]+(.*)/) {
-				push @menu, "1. [$1](#$1)\n";
+				my $x = $1;
+				$x =~ s!\s*$!!g;
+				push @menu, "1. [$x](#$x)\n";
 				$save = $lineno if ++$i == 2;
 			}
 		} continue {$lineno++}
@@ -699,6 +711,7 @@ sub findpath {
 	NEXT:
 	
 	return if !-f $path;
+	
 	$path
 }
 

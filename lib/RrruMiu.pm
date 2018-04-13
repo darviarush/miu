@@ -28,7 +28,7 @@ sub DESTROY {
 	$self->{sd}->close if $self->{sd};
 }
 
-#msg1(":green", "✓·×");
+#msg1(":green", "✓·×  🙌  ");
 
 # use POSIX qw/INT/;
 # $SIG{INT} = sub {

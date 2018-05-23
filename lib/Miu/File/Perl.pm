@@ -71,7 +71,9 @@ BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
 	
-	open(STDERR, ">&STDOUT");
+	open(our $__Miu__STDERR, ">&STDERR") or die $!;
+	close STDERR or die $!;
+	open(STDERR, ">&STDOUT") or die $!;
 }
 
 use utf8;

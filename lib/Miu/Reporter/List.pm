@@ -31,7 +31,8 @@ sub report {
 	print $self->colored("   × ", "red") . $self->gettime . $result->is_string . "\n" if $result->is_fail;
 	
 	print $self->colored("    · ", "yellow") . $self->colored($result->raw, "bold black") ."\n" if $result->is_unknown;
-	print $self->colored("    ≠ ", "white") . $self->colored($result->rem, "bold black") ."\n" if $result->is_got;
+	print "    " . ($result->{key}? $self->colored($result->{key}, "black bold")." ": "") . $self->colored("≠ ", "white") . $self->colored($result->rem, "red") ."\n" if $result->is_got;
+	
 	#print $self->colored("must by: ", "white") . $self->colored($result->rem, "bold black") ."\n" if $result->is_expected;
 	
 }

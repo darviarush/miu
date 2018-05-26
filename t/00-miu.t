@@ -32,7 +32,8 @@ read $f, my $buf, -s $f;
 close $f;
 $buf
 }
-is( scalar(`cd ..; miu -c miu/miu/0x -o miu/.miu`), "miu/0x-miu.miu.pl ... ok\n", "`cd ..; miu -c miu/miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\\n" );
+print `pwd`;
+is( scalar(`cd ..; miu -c miu/0x -o miu/.miu`), "miu/0x-miu.miu.pl ... ok\n", "`cd ..; miu -c miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\\n" );
 
 like( scalar(`miu -c -l 0x`), qr{\.*}, "`miu -c -l 0x` #~ \.*" );
 

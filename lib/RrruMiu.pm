@@ -1,6 +1,8 @@
 # класс
 package RrruMiu;
 
+our $VERSION = "0.01";
+
 use common::sense;
 use Cwd qw//;
 use Guard;
@@ -1017,3 +1019,34 @@ sub toinit {
 # }
 
 1;
+
+__END__
+
+=encoding utf-8
+
+=head1 NAME
+
+RrruMiu - It's testing and documenting framework
+
+=head1 SYNOPSIS
+
+    use RrruMiu;
+
+=head1 DESCRIPTION
+
+See 
+
+=head1 LICENSE
+
+Copyright (C) dart.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+dart E<lt>darviarush@mail.ruE<gt>
+
+=cut
+
+

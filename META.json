@@ -1,0 +1,63 @@
+{
+   "abstract" : "It's testing and documenting framework",
+   "author" : [
+      "dart <darviarush@mail.ru>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Minilla/v3.0.17, CPAN::Meta::Converter version 2.150010",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : 2
+   },
+   "name" : "RrruMiu",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "xt",
+         "inc",
+         "share",
+         "eg",
+         "examples",
+         "author",
+         "builder"
+      ]
+   },
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "Module::Build::Tiny" : "0.035"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Test::CPAN::Meta" : "0",
+            "Test::MinimumVersion::Fast" : "0.04",
+            "Test::PAUSE::Permissions" : "0.04",
+            "Test::Pod" : "1.41",
+            "Test::Spellunker" : "v0.2.7"
+         }
+      }
+   },
+   "release_status" : "unstable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/darviarush/miu/issues"
+      },
+      "homepage" : "https://github.com/darviarush/miu",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/darviarush/miu.git",
+         "web" : "https://github.com/darviarush/miu"
+      }
+   },
+   "version" : "0.01",
+   "x_contributors" : [
+      "U-RA\\dart <dart@my.home>",
+      "Yaroslav O. Kosmina <y.kosmina@cian.ru>"
+   ],
+   "x_serialization_backend" : "JSON::PP version 2.97001",
+   "x_static_install" : 0
+}

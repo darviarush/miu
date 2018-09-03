@@ -22,6 +22,15 @@ for my $package (keys %INC) {
 	# $pkg{$1}=1 while m!\buse\s+([a-zA-Z_]\w*(?:::[a-zA-Z_]\w*))|require\s*""|!g;
 # } 
 
+print "
+
+on 'test' => sub {
+    requires 'Test::More', '0.98';
+};
+
+";
+
+
 for (sort keys %modules) {
 	$version = $modules{$_};
 	print "requires '$_';";

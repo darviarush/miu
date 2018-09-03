@@ -137,16 +137,16 @@ sub scalar {
 # из stdout
 sub stdout {
 	my ($self, $start) = @_;
-	my $begin = "___std(\\*STDOUT); $start; ___res(\\*STDOUT); ";
-	my $start = "___get()";
+	my $begin = "::___std(\\*STDOUT); $start; ::___res(\\*STDOUT); ";
+	my $start = "::___get()";
 	return $begin, $start;
 }
 
 # из stderr
 sub stderr {
 	my ($self, $start) = @_;
-	my $begin = "___std(\\*STDERR); $start; ___res(\\*STDERR); ";
-	my $start = "___get()";
+	my $begin = "::___std(\\*STDERR); $start; ::___res(\\*STDERR); ";
+	my $start = "::___get()";
 	return $begin, $start;
 }
 
@@ -169,43 +169,43 @@ sub retcode {
 # test is
 sub is {
 	my ($self, $start, $end, $desc) = @_;
-	"is( $start, $end, $desc );";
+	"::is( $start, $end, $desc );";
 }
 
 # test
 sub is_deeply {
 	my ($self, $start, $end, $desc) = @_;
-	"is_deeply( $start, $end, $desc );";
+	"::is_deeply( $start, $end, $desc );";
 }
 
 # test
 sub startswith {
 	my ($self, $start, $end, $desc) = @_;
-	"is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
+	"::is( substr($start, 0, length(\$_ret = $end)), \$_ret, $desc );";
 }
 
 # test
 sub endswith {
 	my ($self, $start, $end, $desc) = @_;
-	"is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
+	"::is( substr($start, -length(\$_ret = $end)), \$_ret, $desc );";
 }
 
 # test
 sub like {
 	my ($self, $start, $end, $desc) = @_;
-	"like( $start, $end, $desc );"
+	"::like( $start, $end, $desc );"
 }
 
 # test
 sub unlike {
 	my ($self, $start, $end, $desc) = @_;
-	"unlike( $start, $end, $desc );"
+	"::unlike( $start, $end, $desc );"
 }
 
 # test
 sub cmp_ok {
 	my ($self, $start, $op, $end, $desc) = @_;
-	"cmp_ok( $start, '$op', $end, $desc );";
+	"::cmp_ok( $start, '$op', $end, $desc );";
 }
 
 

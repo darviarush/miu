@@ -16,7 +16,8 @@ sub lib {
 sub gen {
 	my ($self) = @_;
 
-	my $r;
+	my %modules;
+	my %r;
 	$r{$_} = 1, require $_ for grep { s/lib\/// } split /\s+/, `find lib -name '*.pm'`;
 
 	for my $package (keys %INC) {
@@ -42,7 +43,7 @@ sub gen {
 	
 	
 	for (sort keys %modules) {
-		$version = $modules{$_};
+		my $version = $modules{$_};
 		print "requires '$_';";
 		print " # == $version" if $version;
 		print "\n";

@@ -164,7 +164,7 @@ sub parse {
 	$opt{article_dir}	//= "$out_dir/mark";
 	
 	my @dirs = qw/out_dir lib_dir t_dir log_dir article_dir/;
-	if(grep {defined $_} qw/article_only test inspect log stat/) {
+	if(grep {defined $opt{$_}} qw/article_only test inspect log stat uncolor/) {
 		mkpath "$opt{$_}/" for @dirs;
 	} else {
 		readypath "$opt{$_}/" for @dirs;
@@ -172,10 +172,9 @@ sub parse {
 
 	# преобразум пути
 	$opt{include_dirs} = [ map { 
-		my $x = Cwd::abs_path($_); 
-		die "not exists include_dir $x" if !-e $x;
-		die "not dir include_dir $x" if !-d $x;
-		$x 
+		die "not exists include_dir $_" if !-e;
+		die "not dir include_dir $_" if !-d;
+		Cwd::abs_path($_);
 	} split /,/, $opt{include_dirs} ];
 	
 	# удаляем / у директорий

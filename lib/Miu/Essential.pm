@@ -105,9 +105,11 @@ sub clearpath ($) {
 	
 	local $!;
 	
+	#msg1 "clearpath", $path;
+	
 	my @dir;
 	find {
-		if(-d) { push @dir, $_; } else { unlink; }
+		if(-d) { push @dir, $_ if $path ne $_; } else { unlink; }
 	} $path;
 	
 	rmdir for @dir;

@@ -78,12 +78,40 @@ sub executor {
 	die "не удалось обнаружить $executor в PATH=$PATH";
 }
 
+# поиск файлов
+sub find (&@) {
+	my ($sub, @paths) = @_;
+	File::Find::find({
+		no_chdir => 1,
+		wanted => sub {
+			local $_ = $File::Find::name;
+			$sub->();
+		}
+	}, @paths);
+}
+
 # создаёт пути
 sub mkpath ($;$) {
 	my ($path, $mod) = @_;
 	local $!;
 	$mod //= 0744;
 	mkdir $`, $mod while $path =~ m!/!g;
+	$path
+}
+
+# очищает директорию, но саму не удаляет
+sub clearpath ($) {
+	my ($path) = @_;
+	
+	local $!;
+	
+	my @dir;
+	find {
+		if(-d) { push @dir, $_; } else { unlink; }
+	} $path;
+	
+	rmdir for @dir;
+	
 	$path
 }
 
@@ -96,20 +124,6 @@ sub readypath ($;$) {
 	} else {
 		mkpath $path, $mod;
 	}
-	
-	$path
-}
-
-# очищает директорию, но саму не удаляет
-sub clearpath {
-	my ($path) = @_;
-	
-	my @dir;
-	find {
-		if(-d) { push @dir, $_; } else { unlink; }
-	} $path;
-	
-	rmdir for @dir;
 	
 	$path
 }
@@ -146,18 +160,6 @@ sub inputini ($) {
 	}
 	continue {$i++}
 	$x
-}
-
-# поиск файлов
-sub find (&@) {
-	my ($sub, @paths) = @_;
-	File::Find::find({
-		no_chdir => 1,
-		wanted => sub {
-			local $_ = $File::Find::name;
-			$sub->();
-		}
-	}, @paths);
 }
 	
 # удаляет рутовую директорию из пути

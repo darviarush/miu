@@ -163,12 +163,12 @@ sub parse {
 	$opt{log_dir}		//= "$out_dir/log";
 	$opt{article_dir}	//= "$out_dir/mark";
 	
-	readypath "$opt{out_dir}/";
-	readypath "$opt{lib_dir}/";
-	readypath "$opt{t_dir}/";
-	#mkpath "$opt{run_dir}/";
-	readypath "$opt{log_dir}/";
-	readypath "$opt{article_dir}/";
+	my @dirs = qw/out_dir lib_dir t_dir log_dir article_dir/;
+	if(grep {defined $_} qw/article_only test inspect log stat/) {
+		mkpath "$opt{$_}/" for @dirs;
+	} else {
+		readypath "$opt{$_}/" for @dirs;
+	}
 
 	# преобразум пути
 	$opt{include_dirs} = [ map { 
@@ -221,7 +221,7 @@ rrrumiu 🙌 компилирует файлы в код, тесты и стат
     -N, --menu            создавать ссылки в реадме-файле
     -S, --submenu         создавать оглавление в статьях
     -c, --uncolor         отключить цвет
-    -r, --reporter=name   указать формат выдачи на консоль
+    -r, --reporter=name   указать формат выдачи на консоль (dot, list)
     -B, --browser=command указать команду для запуска браузера ('/bin/chrome %s')
     -w, --watch           выполнять тесты из изменившейся главы
     -M, --mk_config       созать конфиг
@@ -242,7 +242,7 @@ rrrumiu 🙌 компилирует файлы в код, тесты и стат
 	if(!$self->{watch}) {
 		$self->mainfind(\&prepare);
 		print "🙌 не найдено ни одного теста\n" if $self->{count_tests} == 0;
-		return;
+		exit $self->{err};
 	}
 	
 	$self->watch(\&prepare);
@@ -701,7 +701,7 @@ sub test {
 		$reporter->fail;
 	}
 	
-	$self->{stop} = 1, return if keys(%ok) != $count_tests;
+	$self->{err} = 1, $self->{stop} = 1, return if keys(%ok) != $count_tests;
 	
 	return 1;
 }

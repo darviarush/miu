@@ -9,10 +9,7 @@ link:
 remote:
 		git remote add origin git@bitbucket.org:darij/miu.git;	git remote add github git@github.com:darviarush/miu.git
 
-README.md: miu/00-miu.miu.pl
-		miu 00:10
-
-dist: README.md cpan
+dist: test cpan
 		git add .
 		git commit
 		git push origin master

@@ -5,7 +5,9 @@ BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
 	
-	open(STDERR, ">&STDOUT");
+	open(our $__Miu__STDERR, ">&STDERR") or die $!;
+	close STDERR or die $!;
+	open(STDERR, ">&STDOUT") or die $!;
 }
 
 use utf8;
@@ -32,10 +34,10 @@ read $f, my $buf, -s $f;
 close $f;
 $buf
 }
-is( scalar(1), "1", "1 # 1" );
+::is( scalar(1), "1", "1 # 1" );
 
 print "== Переход" . "\n";
-is( scalar(1), "1", "1 # 1" );
+::is( scalar(1), "1", "1 # 1" );
 
 print "== Закончили" . "\n";
-is( scalar(6), "6", "6 # 6" );
+::is( scalar(6), "6", "6 # 6" );

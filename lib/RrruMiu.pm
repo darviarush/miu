@@ -172,8 +172,7 @@ sub parse {
 
 	# преобразум пути
 	$opt{include_dirs} = [ map { 
-		die "not exists include_dir $_" if !-e;
-		die "not dir include_dir $_" if !-d;
+		mkpath "$_/";		# для abs_path
 		Cwd::abs_path($_);
 	} split /,/, $opt{include_dirs} ];
 	

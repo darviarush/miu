@@ -121,11 +121,8 @@ sub clearpath ($) {
 sub readypath ($;$) {
 	my ($path, $mod) = @_;
 	
-	if(-e $path) {
-		clearpath $path;
-	} else {
-		mkpath $path, $mod;
-	}
+	mkpath $path, $mod;
+	clearpath $path;
 	
 	$path
 }

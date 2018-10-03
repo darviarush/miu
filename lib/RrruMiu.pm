@@ -163,15 +163,20 @@ sub parse {
 	$opt{log_dir}		//= "$out_dir/log";
 	$opt{article_dir}	//= "$out_dir/mark";
 	
+	readypath "$opt{out_dir}/";
+	readypath "$opt{lib_dir}/";
+	readypath "$opt{t_dir}/";
+	#mkpath "$opt{run_dir}/";
+	readypath "$opt{log_dir}/";
+	readypath "$opt{article_dir}/";
+
 	# преобразум пути
-	$opt{include_dirs} = [ map { mkpath "$_/"; Cwd::abs_path($_) } split /,/, $opt{include_dirs} ];
-	
-	mkpath "$opt{out_dir}/";
-	mkpath "$opt{lib_dir}/";
-	mkpath "$opt{t_dir}/";
-	mkpath "$opt{run_dir}/";
-	mkpath "$opt{log_dir}/";
-	mkpath "$opt{article_dir}/";
+	$opt{include_dirs} = [ map { 
+		my $x = Cwd::abs_path($_); 
+		die "not exists include_dir $x" if !-e $x;
+		die "not dir include_dir $x" if !-d $x;
+		$x 
+	} split /,/, $opt{include_dirs} ];
 	
 	# удаляем / у директорий
 	for my $k (keys %opt) {

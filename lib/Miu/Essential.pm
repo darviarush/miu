@@ -6,7 +6,7 @@ use Term::ANSIColor qw/colored color/;
 use File::Find qw//;
 
 # импортирует в вызывавший модуль функции
-my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color executor mkpath input output inputini find minusroot/);
+my %EXPORT = (map {$_=>1} qw/TODO msg msg1 colored color executor mkpath input output inputini find minusroot readypath clearpath/);
 sub import {
 	my $self = shift;
 	
@@ -81,10 +81,36 @@ sub executor {
 # создаёт пути
 sub mkpath ($;$) {
 	my ($path, $mod) = @_;
-	local $_;
+	local $!;
 	$mod //= 0744;
 	mkdir $`, $mod while $path =~ m!/!g;
-	undef $!;
+	$path
+}
+
+# очищает или создаёт каталог
+sub readypath ($;$) {
+	my ($path, $mod) = @_;
+	
+	if(-e $path) {
+		clearpath $path;
+	} else {
+		mkpath $path, $mod;
+	}
+	
+	$path
+}
+
+# очищает директорию, но саму не удаляет
+sub clearpath {
+	my ($path) = @_;
+	
+	my @dir;
+	find {
+		if(-d) { push @dir, $_; } else { unlink; }
+	} $path;
+	
+	rmdir for @dir;
+	
 	$path
 }
 

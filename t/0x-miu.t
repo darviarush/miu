@@ -5,13 +5,15 @@ BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
 	
-	open(STDERR, ">&STDOUT");
+	open(our $__Miu__STDERR, ">&STDERR") or die $!;
+	close STDERR or die $!;
+	open(STDERR, ">&STDOUT") or die $!;
 }
 
 use utf8;
 
 use open ":std", ":encoding(utf8)";
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 my ($_f, $_ret);
 
@@ -32,6 +34,10 @@ read $f, my $buf, -s $f;
 close $f;
 $buf
 }
+print "== Для статьи про mio" . "\n";
+is( scalar(1), "1", "1 # 1" );
+
+print "=== Метки 1" . "\n";
 print "==== Тестируем количество \"=\"" . "\n";
 is( scalar(6), "6", "6 # 6" );
 

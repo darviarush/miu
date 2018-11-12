@@ -474,7 +474,7 @@ sub compile {
 					$start = $self->{codeFile}->scalar($start, $code);
 
 					my $desc = $_;
-					$desc =~ s/\\[nrt]/\\$&/g;
+					#$desc =~ s/\\[nrt]/\\$&/g;
 					$desc = $self->{codeFile}->string($desc);
 					
 					$self->{codeFile}->println(

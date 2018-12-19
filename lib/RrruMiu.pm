@@ -342,23 +342,45 @@ sub compile {
 	my $thisIsArticle = 1;
 	my ($thisIsTest, $thisIsCode) = (1,0);
 	my @article;
+	my @menu;
 	my $count_tests = 0;
 	my $lines = $self->{lines} = {};
-	my $start_code = "\n```%s\n";
-	my $start_path_name = "";
-	my $end_code = "```\n\n";
+	my $lang = "perl";
+	
+	require Miu::Ext;
+
 
 	while(<$file>) {
 		
-		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), next if /^\[test(?:\s+(\w+))?\]\s*$/;
+		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), $lang = $self->{codeFile}->name, next if /^\[test(?:\s+(\w+))?\]\s*$/;
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
-        ($init, $thisIsCode, $thisIsTest) = (0,1,0), ($thisIsArticle? $start_path_name = "\@\@$1\n": push @article, "\@\@$1\n"), $self->tocode($1), next if /^\@\@(.*?)\s*$/;
+		
+		if(/^\@\@(.*?)\s*$/) {
+			my $include_file = $1;
+			($init, $thisIsCode, $thisIsTest) = (0,1,0);
+			
+			push @article, "```\n\n" if !$thisIsArticle;
+			$thisIsArticle = 1;
+			
+			push @article, "`\@\@$include_file`\n";
+			
+			$lang = Miu::Ext->get_lang($include_file);
+			
+			$self->tocode($include_file);
+			next;
+		}
         
 
 		my $detectEmptyLine = /^\s*$/;
 	
 		my $thisIsHeader = s/^([=#]+)(\s+)/ ("#" x length $1) . $2 /e;
 		my $level = length $1;
+		
+		if($thisIsHeader) {
+			my $x = $';
+			$x =~ s/\s*$//;
+			push @menu, (@menu+1).". [$x](#$x)\n";
+		}
 	
 		if($thisIsHeader && $test_write) {
 			my $text = $';
@@ -371,16 +393,12 @@ sub compile {
 		}
 	
 		if(s/^(\t| {4})// && !$detectEmptyLine) {
-			if($thisIsArticle) {
-				my $i;
-				for($i=$#article; $i>=0 && $article[$i] =~ /^\s*$/; $i--) {
-				}
-				splice @article, $i+1, 0, sprintf($start_code, $self->{codeFile}->name), $start_path_name;
-				$start_path_name = "";
-			}
+			
+			push @article, sprintf("\n```%s\n", $lang) if $thisIsArticle;
+		
 			$thisIsArticle = 0;
 		} elsif(!$detectEmptyLine) {
-			push @article, $end_code if !$thisIsArticle;
+			push @article, "```\n\n" if !$thisIsArticle;
 			$thisIsArticle = 1;
 		}
 		
@@ -530,20 +548,7 @@ sub compile {
 	}
 	
 	if($self->{submenu}) {
-		local $_;
-		my @menu;
-		my $i=0;
-		my $lineno = 0;
-		my $save;
-		for my $line (@article) {
-			if($line =~ /^#+[ \t]+(.*)/) {
-				my $x = $1;
-				$x =~ s!\s*$!!g;
-				push @menu, "1. [$x](#$x)\n";
-				$save = $lineno if ++$i == 2;
-			}
-		} continue {$lineno++}
-		splice @article, $save+1, 0, @menu if $save;
+		splice @article, 1, 0, "## Меню\n", @menu;
 	}
 	
 	# статья-файл

@@ -24,33 +24,29 @@ sub count_tests {
 # запускает тесты
 sub exec {
 	my ($self, $miu, $parseLine) = @_;
+
+	### open3 callback
+	my $stdout = [];
+	my $stderr = [];
+	my $cb = sub {
+		my ($chunk, $std) = @_;
+		while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
+			push @$std, $1;
+			$parseLine->(join("", @$std), $std == $stderr);
+			@$std = ();
+		}
+		push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
+	};
 	
-	### open3 simple
-	use IPC::Open3::Simple;
-	my $ipc = IPC::Open3::Simple->new(out=>sub{$parseLine->($_[0], 0)}, err=>sub{$parseLine->($_[0], 1)});
-	$ipc->run($self->exec_param($miu));
+	$Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
 	
-	# ### open3 callback
-	# my $stdout = [];
-	# my $stderr = [];
-	# my $cb = sub {
-		# my ($chunk, $std) = @_;
-		# while($chunk =~ /(.*)(?:\r\n|\n|\r)/g) {
-			# push @$std, $1;
-			# $parseLine->(join("", @$std), $std == $stderr);
-			# @$std = ();
-		# }
-		# push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
-	# };
+	use IPC::Open3::Callback;
+	my $ipc = IPC::Open3::Callback->new({
+		out_callback => sub { $cb->($_[0], $stdout) }, 
+		err_callback => sub { $cb->($_[0], $stderr) }
+	});
 	
-	# $Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
-	
-	# use IPC::Open3::Callback;
-	# my $ipc = IPC::Open3::Callback->new({
-		# out_callback => sub { $cb->($_[0], $stdout) }, 
-		# err_callback => sub { $cb->($_[0], $stderr) }
-	# });
-	# $ipc->run_command($codeFile->exec($self));
+	$ipc->run_command($self->exec_param($miu));
 	
 	$self
 }

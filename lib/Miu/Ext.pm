@@ -42,6 +42,7 @@ our %EXT = (
 	"*.cmake" => "CMake",
 	"*.config" => "Logtalk",
 	"*.cp" => "Component-Pascal",
+	"cpanfile" => "perl",
 	"*.cpp" => "C++",
 	"*.cs" => "C#",
 	"*.css" => "CSS",

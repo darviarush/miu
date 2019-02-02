@@ -13,7 +13,7 @@ BEGIN {
 use utf8;
 
 use open ":std", ":encoding(utf8)";
-use Test::More tests => 3;
+use Test::More tests => 2;
 
 my ($_f, $_ret);
 
@@ -34,12 +34,8 @@ read $f, my $buf, -s $f;
 close $f;
 $buf
 }
-print "== Для статьи про mio" . "\n";
-is( scalar(1), "1", "1 # 1" );
-
-print "=== Метки 1" . "\n";
 print "==== Тестируем количество \"=\"" . "\n";
-is( scalar(6), "6", "6 # 6" );
+::is( scalar(6), "6", "6 # 6" );
 
 print "=== Второй раздел" . "\n";
-is( scalar(7), "7", "7 # 7" );
+::is( scalar(7), "7", "7 # 7" );

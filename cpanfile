@@ -6,7 +6,7 @@ on 'test' => sub {
 
 requires 'Carp'; # == 1.42
 requires 'Class::Accessor'; # == 0.51
-requires 'Config'; # == 5.026002
+requires 'Config'; # == 5.026003
 requires 'Cwd'; # == 3.67
 requires 'Data::Dumper'; # == 2.167
 requires 'DynaLoader'; # == 1.42
@@ -58,7 +58,7 @@ requires 'Log::Log4perl::Util';
 requires 'Log::Log4perl::Util::TimeTracker';
 requires 'Scalar::Util'; # == 1.49
 requires 'SelectSaver'; # == 1.02
-requires 'Socket'; # == 2.027
+requires 'Socket'; # == 2.029
 requires 'Sub::Name'; # == 0.21
 requires 'Symbol'; # == 1.08
 requires 'Sys::Hostname'; # == 1.20

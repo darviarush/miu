@@ -7,6 +7,8 @@ use common::sense;
 
 use Miu::Essential;
 
+no utf8;
+
 # конструктор
 sub new {
 	my $cls = shift;
@@ -21,89 +23,55 @@ sub count_tests {
 	$self
 }
 
-# # открывает pipe
-# sub _pipe {
-	# my ($STD) = @_;
+# открывает pipe
+use POSIX qw(:errno_h :fcntl_h :sys_wait_h);
+sub _pipe {
+	my ($STD) = @_;
 	
-	# use POSIX qw(:errno_h :fcntl_h);
+	pipe my $RH, my $WH or die $!;
+	select $RH; $|=1; select STDOUT;
 	
-	# pipe my $RH, my $WH or die $!;
-	# select $RH; $|=1; select STDOUT;
+	fcntl $RH, F_GETFL, my $flags or die $!;
+	$flags |= O_NONBLOCK;
+	fcntl $RH, F_SETFL, $flags or die $!;
 	
-	# fcntl $RH, F_GETFL, my $flags or die $!;
-	# $flags |= O_NONBLOCK;
-	# fcntl $RH, F_SETFL, $flags or die $!;
+	open my $SAVESTD, ">&", $STD or die $!;
+	close $STD or die $!;
+	open $STD, ">&", $WH or die $!;
 	
-	# open my $SAVESTD, ">&", $STD or die $!;
-	# close $STD or die $!;
-	# open $STD, ">&", $WH or die $!;
-	
-	# return ($RH, $SAVESTD);
-# }
+	return ($RH, $SAVESTD);
+}
 
-# # закравает pipe
-# sub _reset_pipe {
-	# my ($STD, $SAVESTD) = @_;
-	# close $STD or die $!;
-	# open $STD, ">&", $SAVESTD or die $!;
-# }
+# закравает pipe
+sub _reset_pipe {
+	my ($STD, $SAVESTD) = @_;
+	close $STD or die $!;
+	open $STD, ">&:utf8", $SAVESTD or die $!;
+}
 
 # запускает тесты
 sub exec {
 	my ($self, $miu, $parseLine) = @_;
 	
-	# my @argv = map { utf8::encode($_); $_ } $self->exec_param($miu);
-	# my $X = shift @argv;
+	my @argv = map { utf8::encode($_); $_ } $self->exec_param($miu);
+	my $X = shift @argv;
 	
-	# my ($xname) = $X =~ /([^\/]+)$/;
+	my ($xname) = $X =~ /([^\/]+)$/;
 	
-	# use Proc::FastSpawn;
-	# fd_inherit $_ for (1,2);	# для STDERR и STDOUT
+	use Proc::FastSpawn;
+	fd_inherit $_ for (1,2);	# для STDERR и STDOUT
 	
-	# my ($STDOUT, $SOUT) = _pipe(\*STDOUT);
-	# my ($STDERR, $SERR) = _pipe(\*STDERR);
+	my ($STDOUT, $SOUT) = _pipe(\*STDOUT);
+	my ($STDERR, $SERR) = _pipe(\*STDERR);
 
-	# my $pid = spawn $X, [$xname, @argv];
+	my $pid = spawn $X, [$xname, @argv];
 	
-	# _reset_pipe(\*STDERR, $SERR);
-	# _reset_pipe(\*STDOUT, $SOUT);
+	_reset_pipe(\*STDERR, $SERR);
+	_reset_pipe(\*STDOUT, $SOUT);
 	
-	# my $stdout = [];
-	# my $stderr = [];
-		
-	# my $cb = sub {
-		# my ($chunk, $std) = @_;
-		
-		# while($chunk =~ /(.*?)(?:\r\n|\n|\r)/gs) {
-			# push @$std, $1;
-			# $parseLine->(join("", @$std), $std == $stderr);
-			# @$std = ();
-		# }
-		# push @$std, $1 if $chunk =~ /([^\r\n]+)\z/g;
-		
-		# #msg "<-", $chunk, "->";
-	# };
-	
-	# until( eof $STDERR and eof $STDOUT ) {
-		# read $STDERR, my $res, 1024*1024;
-		# if(length $res) {
-			# utf8::decode($res);
-			# $cb->($res, $stderr);
-		# }
-		
-		# read $STDOUT, my $res, 1024*1024;
-		# if(length $res) {
-			# utf8::decode($res);
-			# $cb->($res, $stdout);
-		# }
-	# }
-	
-	# $parseLine->(join("", @$stderr), 1) if @$stderr;
-	# $parseLine->(join("", @$stdout), 0) if @$stdout;
-
-	### open3 callback
 	my $stdout = [];
 	my $stderr = [];
+		
 	my $cb = sub {
 		my ($chunk, $std) = @_;
 		
@@ -118,18 +86,61 @@ sub exec {
 		push @$std, $chunk if !$i && length $chunk;
 	};
 	
-	$Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
+	my $rin = my $win = my $ein = '';
+    vec($rin, fileno($STDERR), 1) = 1;
+    vec($rin, fileno($STDOUT), 1) = 1;
+    $ein = $rin | $win;
 	
-	use IPC::Open3::Callback;
-	my $ipc = IPC::Open3::Callback->new({
-		out_callback => sub { $cb->($_[0], $stdout) }, 
-		err_callback => sub { $cb->($_[0], $stderr) }
-	});
-	
-	$ipc->run_command($self->exec_param($miu));
+	while() {
+		select(my $rout = $rin, my $wout = $win, my $eout = $ein, 0.25);
+		
+		read $STDERR, my $res, 1024*1024;
+		if(length $res) {
+			#utf8::encode($res) if utf8::is_utf8($res);
+			$cb->($res, $stderr);
+		}
+		
+		read $STDOUT, my $res, 1024*1024;
+		if(length $res) {
+			#utf8::encode($res) if utf8::is_utf8($res);
+			$cb->($res, $stdout);
+		}
+		
+		last if waitpid($pid, WNOHANG) > 0;
+	}
 	
 	$parseLine->(join("", @$stderr), 1) if @$stderr;
 	$parseLine->(join("", @$stdout), 0) if @$stdout;
+
+	# ### open3 callback
+	# my $stdout = [];
+	# my $stderr = [];
+	# my $cb = sub {
+		# my ($chunk, $std) = @_;
+		
+		# my $i=0;
+		# while($chunk =~ /(.*?)(?:\r\n|\n|\r)/gs) {
+			# $i++;
+			# push @$std, $1;
+			# $parseLine->(join("", @$std), $std == $stderr);
+			# @$std = ();
+		# }
+		# push @$std, $' if $i && length $';
+		# push @$std, $chunk if !$i && length $chunk;
+	# };
+	
+	# $Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
+	
+	# use IPC::Open3::Callback;
+	# my $ipc = IPC::Open3::Callback->new({
+		# out_callback => sub { $cb->($_[0], $stdout) }, 
+		# err_callback => sub { $cb->($_[0], $stderr) }
+	# });
+	
+	# $ipc->run_command($self->exec_param($miu));
+	
+	# $parseLine->(join("", @$stderr), 1) if @$stderr;
+	# $parseLine->(join("", @$stdout), 0) if @$stdout;
 	
 	$self
 }

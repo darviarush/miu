@@ -8,6 +8,7 @@ sub new {
 	my ($cls, $raw, $type, @args) = @_;
 	utf8::decode($raw);
 	utf8::decode($type);
+	
 	bless {
 		type => $type,
 		raw => $raw,

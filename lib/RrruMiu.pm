@@ -667,6 +667,7 @@ sub test {
 			my ($s, $stderr) = @_;
 			
 			utf8::decode($s);
+			#msg utf8::is_utf8($s);
 			
 			my $result = $codeFile->parse($s, $stderr);
 			

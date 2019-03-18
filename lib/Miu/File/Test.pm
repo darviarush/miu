@@ -107,12 +107,15 @@ sub exec {
 	my $cb = sub {
 		my ($chunk, $std) = @_;
 		
+		my $i=0;
 		while($chunk =~ /(.*?)(?:\r\n|\n|\r)/gs) {
+			$i++;
 			push @$std, $1;
 			$parseLine->(join("", @$std), $std == $stderr);
 			@$std = ();
 		}
-		push @$std, $' if length $';
+		push @$std, $' if $i && length $';
+		push @$std, $chunk if !$i && length $chunk;
 	};
 	
 	$Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback

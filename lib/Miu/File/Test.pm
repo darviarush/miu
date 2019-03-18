@@ -112,36 +112,6 @@ sub exec {
 	$parseLine->(join("", @$stderr), 1) if @$stderr;
 	$parseLine->(join("", @$stdout), 0) if @$stdout;
 
-	# ### open3 callback
-	# my $stdout = [];
-	# my $stderr = [];
-	# my $cb = sub {
-		# my ($chunk, $std) = @_;
-		
-		# my $i=0;
-		# while($chunk =~ /(.*?)(?:\r\n|\n|\r)/gs) {
-			# $i++;
-			# push @$std, $1;
-			# $parseLine->(join("", @$std), $std == $stderr);
-			# @$std = ();
-		# }
-		# push @$std, $' if $i && length $';
-		# push @$std, $chunk if !$i && length $chunk;
-	# };
-	
-	# $Log::Log4perl::Logger::NON_INIT_WARNED=1;	# Log::Log4perl использует IPC::Open3::Callback
-	
-	# use IPC::Open3::Callback;
-	# my $ipc = IPC::Open3::Callback->new({
-		# out_callback => sub { $cb->($_[0], $stdout) }, 
-		# err_callback => sub { $cb->($_[0], $stderr) }
-	# });
-	
-	# $ipc->run_command($self->exec_param($miu));
-	
-	# $parseLine->(join("", @$stderr), 1) if @$stderr;
-	# $parseLine->(join("", @$stdout), 0) if @$stdout;
-	
 	$self
 }
 

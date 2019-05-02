@@ -25,12 +25,12 @@ requires 'IO'; # == 1.38
 requires 'IO::File'; # == 1.16
 requires 'IO::Handle'; # == 1.36
 requires 'IO::Seekable'; # == 1.1
-requires 'List::Util'; # == 1.49
+requires 'List::Util'; # == 1.5
 requires 'POSIX'; # == 1.76
 requires 'Proc::FastSpawn'; # == 1.2
-requires 'Scalar::Util'; # == 1.49
+requires 'Scalar::Util'; # == 1.5
 requires 'SelectSaver'; # == 1.02
-requires 'Socket'; # == 2.029
+requires 'Socket'; # == 2.020
 requires 'Symbol'; # == 1.08
 requires 'Term::ANSIColor'; # == 4.06
 requires 'Tie::Hash'; # == 1.05

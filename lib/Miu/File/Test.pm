@@ -23,17 +23,33 @@ sub count_tests {
 	$self
 }
 
-# открывает pipe
+# делает не блочным
 use POSIX qw(:errno_h :fcntl_h :sys_wait_h);
+sub _nonblock {
+	my ($RH) = @_;
+	
+	fcntl $RH, F_GETFL, my $flags or die $!;
+	$flags |= O_NONBLOCK;
+	fcntl $RH, F_SETFL, $flags or die $!;
+}
+
+# делает блочным
+sub _block {
+	my ($RH) = @_;
+	
+	fcntl $RH, F_GETFL, my $flags or die $!;
+	$flags &= ~O_NONBLOCK;
+	fcntl $RH, F_SETFL, $flags or die $!;
+}
+
+# открывает pipe
 sub _pipe {
 	my ($STD) = @_;
 	
 	pipe my $RH, my $WH or die $!;
 	select $RH; $|=1; select STDOUT;
 	
-	fcntl $RH, F_GETFL, my $flags or die $!;
-	$flags |= O_NONBLOCK;
-	fcntl $RH, F_SETFL, $flags or die $!;
+	_nonblock($RH);
 	
 	open my $SAVESTD, ">&", $STD or die $!;
 	close $STD or die $!;
@@ -42,7 +58,7 @@ sub _pipe {
 	return ($RH, $SAVESTD);
 }
 
-# закравает pipe
+# закрывает pipe
 sub _reset_pipe {
 	my ($STD, $SAVESTD) = @_;
 	close $STD or die $!;
@@ -107,6 +123,21 @@ sub exec {
 		}
 		
 		last if waitpid($pid, WNOHANG) > 0;
+	}
+
+	_block($STDERR);
+	_block($STDOUT);
+	
+	read $STDERR, my $res, 1024*1024;
+	if(length $res) {
+		#utf8::encode($res) if utf8::is_utf8($res);
+		$cb->($res, $stderr);
+	}
+	
+	read $STDOUT, my $res, 1024*1024;
+	if(length $res) {
+		#utf8::encode($res) if utf8::is_utf8($res);
+		$cb->($res, $stdout);
 	}
 	
 	$parseLine->(join("", @$stderr), 1) if @$stderr;

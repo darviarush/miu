@@ -101,7 +101,7 @@ print STDERR " +26\t\r\e\v" #&> \s+26\t\r\e\v
 
 
 ```perl
-open $f, "/"; ##! ""
+open $f, ">", "/"; ##! "Is a directory"
 
 ```
 
@@ -452,8 +452,8 @@ miu названа в честь Рррумиу - героини романа П
 
 == Документация
 
-1. [miu - система одновременного кодирования, документирования и тестирования](mark/miu/00-miu.markdown)
-1. [Для статьи про mio](mark/miu/0x-miu.markdown)
-1. [Для статьи про MIO №2](mark/miu/0y-miu.markdown)
-1. [miu - js](mark/miu/10-miu.markdown)
 1. [js-тесты в браузере](mark/miu/11-in-browser.markdown)
+1. [Для статьи про MIO №2](mark/miu/0y-miu.markdown)
+1. [miu - система одновременного кодирования, документирования и тестирования](mark/miu/00-miu.markdown)
+1. [miu - js](mark/miu/10-miu.markdown)
+1. [Для статьи про mio](mark/miu/0x-miu.markdown)

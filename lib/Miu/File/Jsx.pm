@@ -1,4 +1,4 @@
-package Miu::File::Jsb;
+package Miu::File::Jsx;
 # врайтер Javascript
 
 use base Miu::File::Js;

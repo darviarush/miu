@@ -409,9 +409,9 @@ sub compile {
 		push @article, $_;
         
 		if(@art_pattern && $thisIsHeader) {
+            $test_write = 0 if $level <= $test_write;
 			for my $art_pattern (@art_pattern) {
 				$test_write = $level, last if $_ =~ $art_pattern;
-				$test_write = 0 if $level <= $test_write;
 			}
 		}
 		
@@ -757,11 +757,11 @@ sub bypattern {
 
 # возвращает путь для find
 sub findpath {
-	my ($self, $re) = @_;
+	my ($self, $re, $path) = @_;
 	
 	return if $self->{stop};
 	
-	my $path = $File::Find::name;
+	$path //= $File::Find::name;
 	
 	#$path =~ s!^\./!!;
 	# если название какой-то директории с точки начинается, то в ней не смотрим
@@ -784,14 +784,36 @@ sub mainfind {
 		
 	my ($dirs, $re) = $self->bypattern;
 	
+	my @files;
 	File::Find::find({
 		no_chdir => 1,
 		wanted => sub {
-			my $path = $self->findpath($re);
-			return if !defined $path;
-			$code->($self, $path);
+            my $path = $self->findpath($re);
+			push @files, $path if defined $path;
 		}
 	}, @$dirs);
+	
+	# сортируем
+	my $pattern = $self->{pattern};
+	if(@$pattern) {
+        my $get_position = sub {
+            my ($x) = @_;
+            my $i=0;
+            for my $r (@$re) {
+                last if $x =~ $r;
+                $i++;
+            }
+            $i
+        };
+        @files = sort { $get_position->($a) <=> $get_position->($b) } @files;
+	}
+	else {
+        @files = sort @files;
+	}
+	
+	for my $path (@files) {
+        $code->($self, $path);
+	}
 	
 	$self
 }

@@ -5,7 +5,7 @@ on 'test' => sub {
 };
 
 requires 'Carp'; # == 1.42
-requires 'Config'; # == 5.026003
+requires 'Config'; # == 5.026001
 requires 'Cwd'; # == 3.67
 requires 'Data::Dumper'; # == 2.167
 requires 'DynaLoader'; # == 1.42
@@ -25,10 +25,10 @@ requires 'IO'; # == 1.38
 requires 'IO::File'; # == 1.16
 requires 'IO::Handle'; # == 1.36
 requires 'IO::Seekable'; # == 1.1
-requires 'List::Util'; # == 1.5
+requires 'List::Util'; # == 1.52
 requires 'POSIX'; # == 1.76
 requires 'Proc::FastSpawn'; # == 1.2
-requires 'Scalar::Util'; # == 1.5
+requires 'Scalar::Util'; # == 1.52
 requires 'SelectSaver'; # == 1.02
 requires 'Socket'; # == 2.020
 requires 'Symbol'; # == 1.08

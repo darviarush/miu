@@ -66,7 +66,7 @@ eval { die "myexception" }; ::unlike( scalar($@), qr{чего\?}, "die \"myexcep
 
 ::___std(\*STDERR); print STDERR " +26\t\r\e\v"; ::___res(\*STDERR); ::is( scalar(::___get()), " +26\t\r\e\v", "print STDERR \" +26\t\r\e\v\" #&>  +26\t\r\e\v" );
 
-open $f, "/"; ::is_deeply( scalar($!), scalar(""), "open \$f, \"/\"; ##! \"\"" );
+open $f, ">", "/"; ::is_deeply( scalar($!), scalar("Is a directory"), "open \$f, \">\", \"/\"; ##! \"Is a directory\"" );
 
 eval {
 	die "abc";

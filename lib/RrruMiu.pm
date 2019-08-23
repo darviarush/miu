@@ -759,8 +759,6 @@ sub bypattern {
 sub findpath {
 	my ($self, $re, $path) = @_;
 	
-	return if $self->{stop};
-	
 	$path //= $File::Find::name;
 	
 	#$path =~ s!^\./!!;
@@ -813,6 +811,7 @@ sub mainfind {
 	
 	for my $path (@files) {
         $code->($self, $path);
+        last if $self->{stop};
 	}
 	
 	$self

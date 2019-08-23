@@ -13,7 +13,7 @@ BEGIN {
 use utf8;
 
 use open ":std", ":encoding(utf8)";
-use Test::More tests => 3;
+use Test::More tests => 6;
 
 my ($_f, $_ret);
 
@@ -34,10 +34,20 @@ read $f, my $buf, -s $f;
 close $f;
 $buf
 }
+print "== Для статьи про MIO №2" . "\n";
+::is( scalar(0), "0", "0 # 0" );
+
+print "=== Метки 2" . "\n";
 ::is( scalar(1), "1", "1 # 1" );
 
 print "== Переход" . "\n";
+::is( scalar(0), "0", "0 # 0" );
+
+print "=== Какие-то ещё метки" . "\n";
 ::is( scalar(1), "1", "1 # 1" );
 
 print "== Закончили" . "\n";
+::is( scalar(3), "3", "3 # 3" );
+
+print "== Метки 3" . "\n";
 ::is( scalar(6), "6", "6 # 6" );

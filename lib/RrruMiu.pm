@@ -539,7 +539,7 @@ sub compile {
 	
 	if($self->{menu} && $self->{readme} eq $self->{miu_path}) {
 		my $article_dir = $self->{article_dir};
-		push @article, "\n\n== Документация\n\n";
+		push @article, "\n\n## Документация\n\n";
 		
 		find {
 			return if !-f $_;

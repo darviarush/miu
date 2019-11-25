@@ -15,6 +15,7 @@
 13. [Как конвертировать markdown в bbcode](#Как конвертировать markdown в bbcode)
 14. [Откуда название **miu**?](#Откуда название **miu**?)
 15. [TODO или куда miu будет развиваться](#TODO или куда miu будет развиваться)
+16. [Документация](#Документация)
 
 ## Что такое miu
 
@@ -452,8 +453,8 @@ miu названа в честь Рррумиу - героини романа П
 
 ## Документация
 
-1. [js-тесты в браузере](mark/miu/11-in-browser.markdown)
-1. [Для статьи про MIO №2](mark/miu/0y-miu.markdown)
-1. [miu - система одновременного кодирования, документирования и тестирования](mark/miu/00-miu.markdown)
-1. [miu - js](mark/miu/10-miu.markdown)
-1. [Для статьи про mio](mark/miu/0x-miu.markdown)
+1. [miu - система одновременного кодирования, документирования и тестирования](mark/00-miu.markdown)
+1. [Для статьи про mio](mark/0x-miu.markdown)
+1. [Для статьи про MIO №2](mark/0y-miu.markdown)
+1. [miu - js](mark/10-miu.markdown)
+1. [js-тесты в браузере](mark/11-in-browser.markdown)

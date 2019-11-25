@@ -530,7 +530,8 @@ sub compile {
 		}
 		
 	}
-		
+
+	push @article, "```\n\n" if !$thisIsArticle;
 
 	close $file;    # закрываем файл miu
 	
@@ -547,8 +548,12 @@ sub compile {
 			my $head = $2;
 			$head =~ s!\s*$!!g;
 			s!(?:\.miu)?\.\w+$!.markdown!;
+			s!^$self->{miu_dir}/?!!;
 			push @article, "1. [$head]($article_dir/$_)\n";
 		} $self->{miu_dir};
+		
+		my $x = "Документация";
+		push @menu, (@menu+1).". [$x](#$x)\n";
 	}
 	
 	if($self->{submenu}) {

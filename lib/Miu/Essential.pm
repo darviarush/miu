@@ -81,13 +81,16 @@ sub executor {
 # поиск файлов
 sub find (&@) {
 	my ($sub, @paths) = @_;
+	
+	my @path;
 	File::Find::find({
 		no_chdir => 1,
 		wanted => sub {
-			local $_ = $File::Find::name;
-			$sub->();
+			push @path, $File::Find::name;
 		}
 	}, @paths);
+	
+	map { $sub->() } sort @path;
 }
 
 # создаёт пути

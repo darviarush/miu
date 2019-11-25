@@ -187,6 +187,7 @@ sub parse {
 	
 	return Miu::Result->new($s, "got", rem=>__from_string __from_comment $') if /^#[ \t]+got: /;
 	return Miu::Result->new($s, "expected", rem=>__from_string __from_comment $') if /^#[ \t]+expected: /;
+	return Miu::Result->new($s, "got", rem=>__from_string __from_comment $1) if /^#                   ('.*)/;
 	
 	return Miu::Result->new($s, "comment", rem=>__from_comment $') if /^#[ \t]/;
 	return Miu::Result->new($s, "header", rem=>__from_comment $') if /^=+[ \t]+/;

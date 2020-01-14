@@ -1,3 +1,6 @@
+# use gmake!
+
+.PHONY: all
 
 all: dist
 

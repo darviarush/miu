@@ -35,7 +35,7 @@ my $abs = 16;	# 16
 
 
 ```perl
-`miu 0x -c` # 0x-miu.miu.pl ... ok\n
+`miu 0x -cC` # 0x-miu.miu.pl ... ok\n
 
 ```
 
@@ -251,7 +251,7 @@ sub N { print "N"; }
 
 
 ```perl
-`miu 0x метки Второй -c` # 0x-miu.miu.pl .. ok\n
+`miu 0x метки Второй -cC` # 0x-miu.miu.pl .. ok\n
 
 ```
 
@@ -263,7 +263,7 @@ sub N { print "N"; }
 
 
 ```perl
-`miu 0x:0y метки какие -c` # 0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n
+`miu 0x:0y метки какие -cC` # 0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n
 
 ```
 
@@ -271,7 +271,7 @@ sub N { print "N"; }
 
 
 ```perl
-`miu 0x метки\$ ^Второй -c` # 0x-miu.miu.pl . ok\n
+`miu 0x метки\$ ^Второй -cC` # 0x-miu.miu.pl . ok\n
 
 ```
 
@@ -281,7 +281,7 @@ sub N { print "N"; }
 
 
 ```perl
-`miu 0x етк торо -c` # 0x-miu.miu.pl .. ok\n
+`miu 0x етк торо -cC` # 0x-miu.miu.pl .. ok\n
 
 ```
 
@@ -370,7 +370,7 @@ miu ищет файлы в директории **miu**.
 
 ```perl
 print `pwd`;
-`cd ..; miu -c miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n
+`cd ..; miu -cC miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n
 
 ```
 
@@ -397,7 +397,7 @@ print `pwd`;
 
 
 ```perl
-`miu -c -l 0x` #~ \.*
+`miu -cC -l 0x` #~ \.*
 
 ```
 

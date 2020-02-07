@@ -39,7 +39,7 @@ print "== Что такое miu" . "\n";
 print "== Быстрый старт" . "\n";
 ::is( scalar(my $abs = 16), "16", "my \$abs = 16;	# 16" );
 
-::is( scalar(`miu 0x -c`), "0x-miu.miu.pl ... ok\n", "`miu 0x -c` # 0x-miu.miu.pl ... ok\n" );
+::is( scalar(`miu 0x -cC`), "0x-miu.miu.pl ... ok\n", "`miu 0x -cC` # 0x-miu.miu.pl ... ok\n" );
 
 ::is( scalar(1+5), "6", "1+5 # 6" );
 ::is_deeply( scalar(1+5), scalar(1+5), "1+5 ## 1+5" );
@@ -95,13 +95,13 @@ use A::A;
 
 print "== Как выполнить тесты из раздела статьи" . "\n";
 print "=== Маски файлов и разделов" . "\n";
-::is( scalar(`miu 0x метки Второй -c`), "0x-miu.miu.pl .. ok\n", "`miu 0x метки Второй -c` # 0x-miu.miu.pl .. ok\n" );
+::is( scalar(`miu 0x метки Второй -cC`), "0x-miu.miu.pl .. ok\n", "`miu 0x метки Второй -cC` # 0x-miu.miu.pl .. ok\n" );
 
-::is( scalar(`miu 0x:0y метки какие -c`), "0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n", "`miu 0x:0y метки какие -c` # 0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n" );
+::is( scalar(`miu 0x:0y метки какие -cC`), "0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n", "`miu 0x:0y метки какие -cC` # 0x-miu.miu.pl . ok\n0y-miu.miu.pl ... ok\n" );
 
-::is( scalar(`miu 0x метки\$ ^Второй -c`), "0x-miu.miu.pl . ok\n", "`miu 0x метки\\\$ ^Второй -c` # 0x-miu.miu.pl . ok\n" );
+::is( scalar(`miu 0x метки\$ ^Второй -cC`), "0x-miu.miu.pl . ok\n", "`miu 0x метки\\\$ ^Второй -cC` # 0x-miu.miu.pl . ok\n" );
 
-::is( scalar(`miu 0x етк торо -c`), "0x-miu.miu.pl .. ok\n", "`miu 0x етк торо -c` # 0x-miu.miu.pl .. ok\n" );
+::is( scalar(`miu 0x етк торо -cC`), "0x-miu.miu.pl .. ok\n", "`miu 0x етк торо -cC` # 0x-miu.miu.pl .. ok\n" );
 
 print "=== Инициализатор" . "\n";
 # инициализация тестов
@@ -110,9 +110,9 @@ print "== Конфигурационный файл" . "\n";
 
 print "== Какие файлы создаёт miu" . "\n";
 print `pwd`;
-::is( scalar(`cd ..; miu -c miu/0x -o miu/.miu`), "miu/0x-miu.miu.pl ... ok\n", "`cd ..; miu -c miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n" );
+::is( scalar(`cd ..; miu -cC miu/0x -o miu/.miu`), "miu/0x-miu.miu.pl ... ok\n", "`cd ..; miu -cC miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n" );
 
-::like( scalar(`miu -c -l 0x`), qr{\.*}, "`miu -c -l 0x` #~ \\.*" );
+::like( scalar(`miu -cC -l 0x`), qr{\.*}, "`miu -cC -l 0x` #~ \\.*" );
 
 print "== Установка" . "\n";
 print "== Как конвертировать markdown в html" . "\n";

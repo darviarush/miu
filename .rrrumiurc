@@ -32,6 +32,14 @@ include_dirs= .miu/lib
 # default: $out_dir/log
 log_dir     = .miu/logs
 
+# отключить покрытие
+# default: 0
+uncover     = 0
+
+# каталог для покрытия
+# default: $out_dir/cover_db
+cover_dir   = .miu/cover_db
+
 # задаёт из какого файла miu сделать README.md
 # если не указан - не создаётся
 readme		= 00-miu.miu.pl

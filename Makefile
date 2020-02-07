@@ -19,7 +19,7 @@ clean:
 		rm -r README.md t mark .miu
 
 test:
-		miu 00:10
+		miu 00:10 -C
 		
 pl:
 		miu 00

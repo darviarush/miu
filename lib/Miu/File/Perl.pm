@@ -31,7 +31,8 @@ sub exec_param {
 	my ($self, $miu) = @_;
 	#my $run_dir = Cwd::abs_path($miu->{run_dir});
 	#minusroot $run_dir, 
-	return $^X, (map {('-I', $_)} @{ $miu->{include_dirs} }), $self->{path};
+	return $^X, $miu->{uncover}? (): "-MDevel::Cover=-db,$miu->{cover_dir},-silent,1",
+		(map {('-I', $_)} @{ $miu->{include_dirs} }), $self->{path};
 }
 
 # возвращает символ комментария для регулярки

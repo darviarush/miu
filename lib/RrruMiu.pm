@@ -151,6 +151,8 @@ sub parse {
 		"S|submenu" => \$opt{submenu},
 		"r|reporter=s" => \$opt{reporter},
 		"B|browser=s" => \$opt{browser},
+		"C|uncover" => \$opt{uncover},
+		"F|cover_dir=s" => \$opt{cover_dir},
 		"w|watch" => \$opt{watch},
 		"M|mk_config" => \$opt{mk_config},
 		"h|help" => \$opt{help},
@@ -165,6 +167,7 @@ sub parse {
 	$opt{run_dir}		//= $opt{lib_dir};
 	$opt{include_dirs}	//= $opt{lib_dir};
 	$opt{log_dir}		//= "$out_dir/log";
+	$opt{cover_dir}		//= "$out_dir/cover_db";
 	$opt{article_dir}	//= "$out_dir/mark";
 	
 	my @dirs = qw/out_dir lib_dir t_dir log_dir article_dir/;
@@ -242,12 +245,39 @@ rrrumiu 🙌 компилирует файлы в код, тесты и стат
 	}
 	
 	if(!$self->{watch}) {
+		$self->cover_delete;
 		$self->mainfind(\&prepare);
-		print "🙌 не найдено ни одного теста\n" if $self->{count_tests} == 0;
+		if($self->{count_tests} == 0) {
+			print "🙌 не найдено ни одного теста\n";
+		} else {
+			$self->cover_report;
+		}
+		
 		exit $self->{err};
 	}
 	
 	$self->watch(\&prepare);
+}
+
+# удаляет базу покрытия
+sub cover_delete {
+	my ($self) = @_;
+	system "cover -silent -delete '$self->{cover_dir}'" if !$self->{uncover};
+	$self
+}
+
+# строит отчёт покрытия
+sub cover_report {
+	my ($self) = @_;
+	
+	return $self if $self->{uncover};
+	my $exit_code = system "cover -silent -report html_basic '$self->{cover_dir}'";
+	if($exit_code == 0) {
+		my $dir = Cwd::abs_path($self->{cover_dir});
+		print "Отчёт покрытия: file://$dir/coverage.html\n";
+	}
+	
+	$self
 }
 
 # парсим файл и переписываем

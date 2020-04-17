@@ -25,10 +25,13 @@ sub report {
 	my ($self, $result, $current_line) = @_;
 	my $time;
 	
+	# use DDP {colored => 1};
+	# print $current_line, ") ", DDP::np(my $x=$result);
+	
 	# 🕅
 	print $self->colored("§" x length(($result->raw =~ /^([#=]+)/)[0]), "cyan") . " ". $self->colored($result->rem,  "bold", "black") . "\n" if $result->is_header;
-	print $self->colored("   ✓ ", "green") . $self->gettime . $result->is_string . "\n" if $result->is_ok;
-	print $self->colored("   × ", "red") . $self->gettime . $result->is_string . "\n" if $result->is_fail;
+	print $self->colored("   ✓ ", "green") . $self->gettime . $result->string . "\n" if $result->is_ok;
+	print $self->colored("   × ", "red") . $self->gettime . $result->string . "\n" if $result->is_fail;
 	
 	print $self->colored("    · ", "yellow") . $self->colored($result->raw, "bold", "black") ."\n" if $result->is_unknown;
 	print "    " . ($result->{key}? $self->colored($result->{key}, "black bold")." ": "") . $self->colored("≠ ", "white") . $self->colored($result->rem, "red") ."\n" if $result->is_got;

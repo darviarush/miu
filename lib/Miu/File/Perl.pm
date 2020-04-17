@@ -64,45 +64,37 @@ sub before_save {
 
 	my $count_tests = $self->{count_tests};
 	die "не указано количество тестов" if !defined $count_tests;
+
+
+	$self->unshift_test("
+my \$_f;
+
+") if $self->{use_std};
+
+	# open(our $__Miu__STDERR, ">&STDERR") or die $!;
+	# close STDERR or die $!;
+	# open(STDERR, ">&STDOUT") or die $!;
+
+	#use strict;
+	#use warnings;
 	
 	$self->unshift_test('#!/usr/bin/env perl
 # сгенерировано miu
 
+use utf8;
+use open qw/:std :utf8/;
+
 BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
-	
-	open(our $__Miu__STDERR, ">&STDERR") or die $!;
-	close STDERR or die $!;
-	open(STDERR, ">&STDOUT") or die $!;
+	close STDERR; open(STDERR, ">&STDOUT");
 }
 
-use utf8;
-
-use open ":std", ":encoding(utf8)";
 use Test::More tests => ' . $count_tests . ';
 
-my ($_f, $_ret);
-
-sub ___std {
-my $fh = shift;
-open $_f, ">&", $fh; close $fh; open $fh, ">", "' . $out_dir . '/miu-tmp-fh";
-}
-
-sub ___res {
-my $fh = shift;
-close $fh;
-open $fh, ">&", $_f;
-}
-
-sub ___get {
-open my $f, "' . $out_dir . '/miu-tmp-fh";
-read $f, my $buf, -s $f;
-close $f;
-$buf
-}
-
 ');
+
+	
 
 }
 
@@ -140,16 +132,18 @@ sub scalar {
 # из stdout
 sub stdout {
 	my ($self, $start) = @_;
-	my $begin = "::___std(\\*STDOUT); $start; ::___res(\\*STDOUT); ";
-	my $start = "::___get()";
+	$self->{use_std}++;
+	my $begin = "{ local *STDOUT; open STDOUT, '>', \\\$_f; binmode STDOUT; $start; close STDOUT }; ";
+	my $start = "\$_f";
 	return $begin, $start;
 }
 
 # из stderr
 sub stderr {
 	my ($self, $start) = @_;
-	my $begin = "::___std(\\*STDERR); $start; ::___res(\\*STDERR); ";
-	my $start = "::___get()";
+	$self->{use_std}++;
+	my $begin = "{ local *STDERR; open STDERR, '>', \\\$_f; binmode STDOUT; $start; close STDERR; }; ";
+	my $start = "\$_f";
 	return $begin, $start;
 }
 

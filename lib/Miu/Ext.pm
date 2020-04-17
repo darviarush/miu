@@ -208,6 +208,8 @@ our %EXT = (
 	"httpd2.conf" => "Apache Configuration",
 	"QRPGLESRC.*" => "ILERPG",
 	"xorg.conf" => "x.org Configuration",
+	
+	"*.txt" => "text",
 );
 
 use List::Util qw/pairmap pairgrep/;
@@ -220,7 +222,7 @@ sub get_lang {
 	($file) = $file =~ m!([^/]+)$!;
 	
 	my @res = pairgrep { $file =~ $a } @RE;
-	!@res && return "";
+	!@res && return do { my ($ext) = $file =~ m!([^\./]+)$!; $ext } // "";
 	$EXT{$res[1]} // ""
 }
 

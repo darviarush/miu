@@ -70,10 +70,16 @@ sub raw {
 	$self->{raw}
 }
 
+# строка
+sub string {
+	my ($self) = @_;
+	$self->{rem} // $self->{raw}
+}
+
 # это строка
 sub is_string {
 	my ($self) = @_;
-	$self->{rem} // $self->{raw}
+	defined $self->{rem} or defined $self->{raw}
 }
 
 # ошибка в тесте: получено значение

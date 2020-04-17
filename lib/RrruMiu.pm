@@ -249,6 +249,8 @@ rrrumiu 🙌 компилирует файлы в код, тесты и стат
 		$self->mainfind(\&prepare);
 		if($self->{count_tests} == 0) {
 			print "🙌 не найдено ни одного теста\n";
+		} elsif($self->{err}) {
+			#print "Тест провалился\n";
 		} else {
 			$self->cover_report;
 		}
@@ -386,7 +388,15 @@ sub compile {
 
 	while(<$file>) {
 		
-		($init, $thisIsCode, $thisIsTest) = (0,0,1), $self->totest($1), $lang = $self->{codeFile}->name, next if /^\[test(?:\s+(\w+))?\]\s*$/;
+		if(/^\[test(?:\s+(\w+))?\]\s*$/) {
+			($init, $thisIsCode, $thisIsTest) = (0,0,1);
+			$self->totest($1);
+			$lang = $self->{codeFile}->name;
+			push @article, "```\n\n" if !$thisIsArticle;
+			$thisIsArticle = 1;
+			next;
+		}
+		
 		($init, $thisIsCode, $thisIsTest) = (1,0,1), $self->toinit, next if /^\[init\]\s*$/;
 		
 		if(/^\@\@(.*?)\s*$/) {
@@ -552,13 +562,8 @@ sub compile {
 				else {
 					$self->{codeFile}->println($_);
 				}
-				
-                
-                
 			}
-			
 		}
-		
 	}
 
 	push @article, "```\n\n" if !$thisIsArticle;
@@ -567,6 +572,29 @@ sub compile {
 	
     # заполняем файлы кода и тестов, очищаем codeFile и codeFiles
     $self->save;
+	
+	my $path = $self->{miu_path};
+	$path =~ s!-!/!g;
+	$path =~ s!/(\w)!"/".uc $1!ge;
+	$path =~ s!(\.[^/\.]+)+$!.pm!;
+	$path = "lib/$path";
+	
+	if(-e $path) {
+		my $mark = join "", @article;
+
+		use Markdown::To::POD 'markdown_to_pod';
+		use List::Util qw/pairmap/;
+		
+		my $pod = join "", pairmap { 
+			my $pod = markdown_to_pod($a);
+			$pod =~ s!\bCL+<!L<!g;
+			($pod, join "\n", map {"\t$_"} split /\n/, $b) 
+		} split /```.*/, $mark;
+		
+		my $pm = input $path;
+		$pm =~ s!((\n__END__\n).*)?$!$2\n=encoding utf-8\n\n$pod!s;
+		output $path, $pm;
+	}
 	
 	if($self->{menu} && $self->{readme} eq $self->{miu_path}) {
 		my $article_dir = $self->{article_dir};
@@ -594,6 +622,8 @@ sub compile {
 	mkpath $self->{article_path};
 	output $self->{article_path}, \@article, "Не могу записать файл статьи %s: %s";
 	output "README.md", \@article, "Не могу записать %s: %s" if $self->{readme} eq $self->{miu_path};
+	
+	
 	
 	# if(exists $Text::{"Markdown::"}) {
 	

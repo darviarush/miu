@@ -1,39 +1,18 @@
 #!/usr/bin/env perl
 # сгенерировано miu
 
+use utf8;
+use open qw/:std :utf8/;
+
 BEGIN {
 	select(STDERR);	$| = 1;
 	select(STDOUT); $| = 1; # default
-	
-	open(our $__Miu__STDERR, ">&STDERR") or die $!;
-	close STDERR or die $!;
-	open(STDERR, ">&STDOUT") or die $!;
+	close STDERR; open(STDERR, ">&STDOUT");
 }
 
-use utf8;
-
-use open ":std", ":encoding(utf8)";
 use Test::More tests => 33;
 
-my ($_f, $_ret);
-
-sub ___std {
-my $fh = shift;
-open $_f, ">&", $fh; close $fh; open $fh, ">", ".miu/miu-tmp-fh";
-}
-
-sub ___res {
-my $fh = shift;
-close $fh;
-open $fh, ">&", $_f;
-}
-
-sub ___get {
-open my $f, ".miu/miu-tmp-fh";
-read $f, my $buf, -s $f;
-close $f;
-$buf
-}
+my $_f;
 print "= miu - система одновременного кодирования, документирования и тестирования" . "\n";
 print "== Что такое miu" . "\n";
 print "== Быстрый старт" . "\n";
@@ -62,9 +41,9 @@ eval { die "myexception" }; ::is( substr(scalar($@), 0, length($_ret = "myexcept
 eval { die "myexception" }; ::unlike( scalar($@), scalar(qr/чего\?/), "die \"myexception\" ##\@ !~ qr/чего\\?/" );
 eval { die "myexception" }; ::unlike( scalar($@), qr{чего\?}, "die \"myexception\" #\@ !~ чего\\?" );
 
-::___std(\*STDOUT); print "123\n"; ::___res(\*STDOUT); ::is( scalar(::___get()), "123\n", "print \"123\n\" #>> 123\n" );
+{ local *STDOUT; open STDOUT, '>', \$_f; binmode STDOUT; print "123\n"; close STDOUT }; ::is( scalar($_f), "123\n", "print \"123\n\" #>> 123\n" );
 
-::___std(\*STDERR); print STDERR " +26\t\r\e\v"; ::___res(\*STDERR); ::is( scalar(::___get()), " +26\t\r\e\v", "print STDERR \" +26\t\r\e\v\" #&>  +26\t\r\e\v" );
+{ local *STDERR; open STDERR, '>', \$_f; binmode STDOUT; print STDERR " +26\t\r\e\v"; close STDERR; }; ::is( scalar($_f), " +26\t\r\e\v", "print STDERR \" +26\t\r\e\v\" #&>  +26\t\r\e\v" );
 
 open $f, ">", "/"; ::is_deeply( scalar($!), scalar("Is a directory"), "open \$f, \">\", \"/\"; ##! \"Is a directory\"" );
 
@@ -80,18 +59,17 @@ sub for_io_test {
 
 }
 
-::___std(\*STDOUT); for_io_test(); ::___res(\*STDOUT); ::is( scalar(::___get()), "123\n", "for_io_test(); #>> 123\n" );
+{ local *STDOUT; open STDOUT, '>', \$_f; binmode STDOUT; for_io_test(); close STDOUT }; ::is( scalar($_f), "123\n", "for_io_test(); #>> 123\n" );
 
 print "=== Тестируем javascript" . "\n";
 print "== Программный код" . "\n";
 use A::A;
-::___std(\*STDOUT); &A::A::A; ::___res(\*STDOUT); ::is( scalar(::___get()), "A", "&A::A::A; #>> A" );
-::___std(\*STDOUT); &A::A::N; ::___res(\*STDOUT); ::is( scalar(::___get()), "N", "&A::A::N; #>> N" );
+{ local *STDOUT; open STDOUT, '>', \$_f; binmode STDOUT; &A::A::A; close STDOUT }; ::is( scalar($_f), "A", "&A::A::A; #>> A" );
+{ local *STDOUT; open STDOUT, '>', \$_f; binmode STDOUT; &A::A::N; close STDOUT }; ::is( scalar($_f), "N", "&A::A::N; #>> N" );
 
 
-::___std(\*STDOUT); require "./.miu/test.pl"; ::___res(\*STDOUT); ::is( scalar(::___get()), "AN", "require \"./.miu/test.pl\"; #>> AN" );
+{ local *STDOUT; open STDOUT, '>', \$_f; binmode STDOUT; require "./.miu/test.pl"; close STDOUT }; ::is( scalar($_f), "AN", "require \"./.miu/test.pl\"; #>> AN" );
 ::is( scalar(`perl .miu/test.pl`), "AN", "`perl .miu/test.pl` # AN" );
-
 
 print "== Как выполнить тесты из раздела статьи" . "\n";
 print "=== Маски файлов и разделов" . "\n";
@@ -107,7 +85,6 @@ print "=== Инициализатор" . "\n";
 # инициализация тестов
 
 print "== Конфигурационный файл" . "\n";
-
 print "== Какие файлы создаёт miu" . "\n";
 print `pwd`;
 ::is( scalar(`cd ..; miu -cC miu/0x -o miu/.miu`), "miu/0x-miu.miu.pl ... ok\n", "`cd ..; miu -cC miu/0x -o miu/.miu` # miu/0x-miu.miu.pl ... ok\n" );
